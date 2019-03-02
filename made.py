@@ -126,6 +126,7 @@ def out_mask(prev_nodes,prev_h,indexes):
         mask[i,j] = 1
   return mask
 
+dir_mask =
 
 masks = dict()
 for i in range(10):
@@ -136,7 +137,7 @@ for i in range(10):
     h1_mask = in_mask(in_indexes,0,h1_indexes)
     h2_mask = in_mask(h1_indexes,1,h2_indexes)
     out_m = out_mask(h2_indexes,2,out_indexes)
-    dict[i] = [h1_mask, h2_mask, out_m]
+    dict[i] = [h1_mask, h2_mask, out_m, dir_mask]
 
 #instantiate variables
 tf.reset_default_graph()
@@ -155,6 +156,9 @@ if random_init:
   #output layer weight and bias
   x_hat = tf.get_variable("x_hat",shape=(hidden_units,features),initializer=tf.random_normal_initializer(0,0.0000005))
   x_b_hat = tf.get_variable("x_b_hat",shape=(1,features),initializer=tf.random_normal_initializer(0,0.0000005))
+
+  #direct connection
+  dir = tf.get_variable("dir",shape=(batch_size,batch_size),initializer=tf.random_normal_initializer(0,0.0000005))
 else:
   #h1 weight and bias
   w1 = tf.get_variable("w1",shape=(features,hidden_units),initializer=tf.constant_initializer(weights['w1']))
@@ -168,19 +172,13 @@ else:
   x_hat = tf.get_variable("x_hat",shape=(hidden_units,features),initializer=tf.constant_initializer(weights['x_hat']))
   x_b_hat = tf.get_variable("x_b_hat",shape=(1,features),initializer=tf.constant_initializer(weights['x_b_hat']))
 
+  #direct connection
+  dir = tf.get_variable("dir",shape=(batch_size,batch_size),initializer=tf.constant_initializer(weights['dir']))
+
 #create network
-in_indexes = node_index(features,features,0)
-h1_indexes = node_index(hidden_units,features,0+1,prev_nodes=in_indexes)
-h2_indexes = node_index(hidden_units,features,1+1,prev_nodes=h1_indexes)
-out_indexes = node_index(features,features,2+1,prev_nodes=h2_indexes)
-
-h1_mask = in_mask(in_indexes,0,h1_indexes)
-h2_mask = in_mask(h1_indexes,1,h2_indexes)
-out_m = out_mask(h2_indexes,2,out_indexes)
-
 hidden1 = tf.nn.relu(tf.add(b1,tf.matmul(x,tf.multiply(w1,h1_mask))))
 hidden2 = tf.nn.relu(tf.add(b2,tf.matmul(hidden1,tf.multiply(w2,h2_mask))))
-out = tf.nn.sigmoid(tf.add(x_b_hat,tf.matmul(hidden2,tf.multiply(x_hat,out_m))))
+out = tf.nn.sigmoid(tf.add(tf.add(x_b_hat,tf.matmul(hidden2,tf.multiply(x_hat,out_m))), tf.matmul(tf.multiply(dir,dir_mask),x)))
 
 def cross_entropy(x, y, axis=-1):
   safe_y = tf.where(tf.equal(x, 0.), tf.ones_like(y), y)
@@ -218,10 +216,13 @@ with tf.Session() as sess:
                      w2 = sess.run(w2),
                      b2 = sess.run(b2),
                      x_hat = sess.run(x_hat),
+                     dir = sess.run(dir),
                      x_b_hat = sess.run(x_b_hat),
                      h1_mask = sess.run(tf.convert_to_tensor(h1_mask)),
                      h2_mask = sess.run(tf.convert_to_tensor(h2_mask)),
-                     out_mask = sess.run(tf.convert_to_tensor(out_m)))
+                     out_mask = sess.run(tf.convert_to_tensor(out_m)),
+                     dir_mask = sess.run(tf.convert_to_tensor(dir_m)))
+
       print("Saving weights to filename 1_11made_weightsv{}.npz".format(counter))
     if np.mod(i,3000) == 0:
       end=time.time()
