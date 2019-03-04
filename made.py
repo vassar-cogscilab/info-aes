@@ -126,18 +126,17 @@ def out_mask(prev_nodes,prev_h,indexes):
         mask[i,j] = 1
   return mask
 
-dir_mask =
-
 masks = dict()
 for i in range(10):
     in_indexes = node_index(features,features,0)
     h1_indexes = node_index(hidden_units,features,0+1,prev_nodes=in_indexes)
     h2_indexes = node_index(hidden_units,features,1+1,prev_nodes=h1_indexes)
-    out_indexes = node_index(features,features,2+1,prev_nodes=h2_indexes)
+    out_indexes = in_indexes
     h1_mask = in_mask(in_indexes,0,h1_indexes)
     h2_mask = in_mask(h1_indexes,1,h2_indexes)
     out_m = out_mask(h2_indexes,2,out_indexes)
-    dict[i] = [h1_mask, h2_mask, out_m, dir_mask]
+    dir_m = out_mask(in_indexes, 0, out_indexes)
+    dict[i] = [h1_mask, h2_mask, out_m, dir_m]
 
 #instantiate variables
 tf.reset_default_graph()
@@ -178,7 +177,7 @@ else:
 #create network
 hidden1 = tf.nn.relu(tf.add(b1,tf.matmul(x,tf.multiply(w1,h1_mask))))
 hidden2 = tf.nn.relu(tf.add(b2,tf.matmul(hidden1,tf.multiply(w2,h2_mask))))
-out = tf.nn.sigmoid(tf.add(tf.add(x_b_hat,tf.matmul(hidden2,tf.multiply(x_hat,out_m))), tf.matmul(tf.multiply(dir,dir_mask),x)))
+out = tf.nn.sigmoid(tf.add(tf.add(x_b_hat,tf.matmul(hidden2,tf.multiply(x_hat,out_m))), tf.matmul(tf.multiply(dir,dir_m),x)))
 
 def cross_entropy(x, y, axis=-1):
   safe_y = tf.where(tf.equal(x, 0.), tf.ones_like(y), y)
@@ -200,7 +199,7 @@ with tf.Session() as sess:
   #counter = 0
   for i in range(2):
     count = 0 # this is different from counter
-    h1_mask, h2_mask, out_m = masks[count]
+    h1_mask, h2_mask, out_m, dir_m = masks[count]
     if count == 9
         count = 0
     count++
@@ -221,7 +220,7 @@ with tf.Session() as sess:
                      h1_mask = sess.run(tf.convert_to_tensor(h1_mask)),
                      h2_mask = sess.run(tf.convert_to_tensor(h2_mask)),
                      out_mask = sess.run(tf.convert_to_tensor(out_m)),
-                     dir_mask = sess.run(tf.convert_to_tensor(dir_m)))
+                     dir_m = sess.run(tf.convert_to_tensor(dir_m)))
 
       print("Saving weights to filename 1_11made_weightsv{}.npz".format(counter))
     if np.mod(i,3000) == 0:
