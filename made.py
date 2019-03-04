@@ -8,8 +8,8 @@ import gzip
 np.set_printoptions(threshold=np.nan)
 import time
 
-#load with cPickle
-mnist = gzip.open('IA/mnist.pkl.gz','rb')
+#load with cPickleIA/
+mnist = gzip.open('mnist.pkl.gz','rb')
 train, val, test = cPickle.load(mnist, encoding='latin1')
 mnist.close()
 
@@ -121,7 +121,7 @@ for i in range(10):
     h2_mask = in_mask(h1_indexes,1,h2_indexes)
     out_m = out_mask(h2_indexes,2,out_indexes)
     dir_m = out_mask(in_indexes, 0, out_indexes)
-    dict[i] = [h1_mask, h2_mask, out_m, dir_m]
+    masks[i] = [h1_mask, h2_mask, out_m, dir_m]
 
 #instantiate variables
 tf.reset_default_graph()
@@ -142,7 +142,7 @@ if random_init:
   x_b_hat = tf.get_variable("x_b_hat",shape=(1,features),initializer=tf.random_normal_initializer(0,0.0000005))
 
   #direct connection
-  dirr = tf.get_variable("dirr",shape=(batch_size,batch_size),initializer=tf.random_normal_initializer(0,0.0000005))
+  dirr = tf.get_variable("dirr",shape=(features,features),initializer=tf.random_normal_initializer(0,0.0000005))
 else:
   #h1 weight and bias
   w1 = tf.get_variable("w1",shape=(features,hidden_units),initializer=tf.constant_initializer(weights['w1']))
@@ -157,12 +157,12 @@ else:
   x_b_hat = tf.get_variable("x_b_hat",shape=(1,features),initializer=tf.constant_initializer(weights['x_b_hat']))
 
   #direct connection
-  dirr = tf.get_variable("dirr",shape=(batch_size,batch_size),initializer=tf.constant_initializer(weights['dirr']))
+  dirr = tf.get_variable("dirr",shape=(features,features),initializer=tf.constant_initializer(weights['dirr']))
 
 #create network
 hidden1 = tf.nn.relu(tf.add(b1,tf.matmul(x,tf.multiply(w1,h1_mask))))
 hidden2 = tf.nn.relu(tf.add(b2,tf.matmul(hidden1,tf.multiply(w2,h2_mask))))
-out = tf.nn.sigmoid(tf.add(tf.add(x_b_hat,tf.matmul(hidden2,tf.multiply(x_hat,out_m))), tf.matmul(tf.multiply(dirr,dir_m),x)))
+out = tf.nn.sigmoid(tf.add(tf.add(x_b_hat,tf.matmul(hidden2,tf.multiply(x_hat,out_m))), tf.matmul(x,tf.multiply(dirr,dir_m))))
 
 def cross_entropy(x, y, axis=-1):
   safe_y = tf.where(tf.equal(x, 0.), tf.ones_like(y), y)
@@ -180,19 +180,15 @@ init = tf.global_variables_initializer()
 #run Session
 with tf.Session() as sess:
   sess.run(init)
-  #losses = []
-  #counter = 0
+  counter = 0
   for i in range(500000):
     count = 0 # this is different from counter
     h1_mask, h2_mask, out_m, dir_m = masks[count]
     if count == 9:
         count = 0
     count+= 1
-    #start=time.time()
     x_data = gen_data(batch_size)
     _ = sess.run(optimizer,feed_dict={x:x_data})
-    #print("loss: {}".format(sess.run(loss,feed_dict={x:x_data})))
-    #print("out: {}".format(sess.run(out,feed_dict={x:x_data})))
     if np.mod(i,50000) == 0:
       counter += 1
       np.savez("3_4made_weightsv{}".format(counter), w1 = sess.run(w1),
