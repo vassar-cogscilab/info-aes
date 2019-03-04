@@ -188,7 +188,6 @@ with tf.Session() as sess:
     if count == 9:
         count = 0
     count+= 1
-    #start=time.time()
     x_data = gen_data(batch_size)
     _ = sess.run(optimizer,feed_dict={x:x_data})
     #print("loss: {}".format(sess.run(loss,feed_dict={x:x_data})))
