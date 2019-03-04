@@ -142,7 +142,7 @@ if random_init:
   x_b_hat = tf.get_variable("x_b_hat",shape=(1,features),initializer=tf.random_normal_initializer(0,0.0000005))
 
   #direct connection
-  dir = tf.get_variable("dir",shape=(batch_size,batch_size),initializer=tf.random_normal_initializer(0,0.0000005))
+  dirr = tf.get_variable("dirr",shape=(batch_size,batch_size),initializer=tf.random_normal_initializer(0,0.0000005))
 else:
   #h1 weight and bias
   w1 = tf.get_variable("w1",shape=(features,hidden_units),initializer=tf.constant_initializer(weights['w1']))
@@ -157,12 +157,12 @@ else:
   x_b_hat = tf.get_variable("x_b_hat",shape=(1,features),initializer=tf.constant_initializer(weights['x_b_hat']))
 
   #direct connection
-  dir = tf.get_variable("dir",shape=(batch_size,batch_size),initializer=tf.constant_initializer(weights['dir']))
+  dirr = tf.get_variable("dirr",shape=(batch_size,batch_size),initializer=tf.constant_initializer(weights['dirr']))
 
 #create network
 hidden1 = tf.nn.relu(tf.add(b1,tf.matmul(x,tf.multiply(w1,h1_mask))))
 hidden2 = tf.nn.relu(tf.add(b2,tf.matmul(hidden1,tf.multiply(w2,h2_mask))))
-out = tf.nn.sigmoid(tf.add(tf.add(x_b_hat,tf.matmul(hidden2,tf.multiply(x_hat,out_m))), tf.matmul(tf.multiply(dir,dir_m),x)))
+out = tf.nn.sigmoid(tf.add(tf.add(x_b_hat,tf.matmul(hidden2,tf.multiply(x_hat,out_m))), tf.matmul(tf.multiply(dirr,dir_m),x)))
 
 def cross_entropy(x, y, axis=-1):
   safe_y = tf.where(tf.equal(x, 0.), tf.ones_like(y), y)
@@ -191,7 +191,7 @@ with tf.Session() as sess:
     #start=time.time()
     x_data = gen_data(batch_size)
     _ = sess.run(optimizer,feed_dict={x:x_data})
-    print("loss: {}".format(sess.run(loss,feed_dict={x:x_data})))
+    #print("loss: {}".format(sess.run(loss,feed_dict={x:x_data})))
     #print("out: {}".format(sess.run(out,feed_dict={x:x_data})))
     if np.mod(i,50000) == 0:
       counter += 1
@@ -200,62 +200,9 @@ with tf.Session() as sess:
                      w2 = sess.run(w2),
                      b2 = sess.run(b2),
                      x_hat = sess.run(x_hat),
-                     dir = sess.run(dir),
+                     dirr = sess.run(dirr),
                      x_b_hat = sess.run(x_b_hat),
                      h1_mask = sess.run(tf.convert_to_tensor(h1_mask)),
                      h2_mask = sess.run(tf.convert_to_tensor(h2_mask)),
                      out_mask = sess.run(tf.convert_to_tensor(out_m)),
                      dir_m = sess.run(tf.convert_to_tensor(dir_m)))
-
-#       print("Saving weights to filename 4_3made_weightsv{}.npz".format(counter))
-#     if np.mod(i,3000) == 0:
-#       end=time.time()
-#       print("Step: {} | Loss: {}".format(i,(sess.run(loss,feed_dict={x:x_data}))))
-#       losses.append(sess.run(loss, feed_dict={x: x_data}))
-#       # print("Time for last 1000 steps: {}".format(end-start))
-#   # print("All done!")
-#
-# #upload saved .npz weight file
-# weights = files.upload()
-#
-# files.download('3_4weightsv10.npz')
-#
-# #use np.load with the filename that google colab saved the uploaded file to,
-# #   then print out the keys just for ease of use. we can now access the saved
-# #   weights by accessing these keys from the weights dictionary.
-# weights = np.load('2_15weightsv10.npz')
-# print(type(weights))
-# print(weights.keys())
-#
-# print(weights['w1'].shape)
-#
-# #set weights from dict to variables we can use
-# print(weights['w1'])
-#
-#
-#
-# #generate samples
-#
-# def gen_image(num_images):
-#   x = np.random.rand(num_images, features)
-#   #iterate time
-#   for i in range(0,features):
-#     hidden1 = relu_np(np.add(weights['b1'],np.matmul(x,np.multiply(weights['h1_mask'],weights['w1']))))
-#     hidden2 = relu_np(np.add(weights['b2'],np.matmul(hidden1,np.multiply(weights['h2_mask'],weights['w2']))))
-#     out = sigmoid_np(np.add(weights['x_b_hat'],np.matmul(hidden2,np.multiply(weights['out_mask'],weights['x_hat']))))
-#
-#     #set p to current pixel probabilities
-#     p = out[:,i]
-#     #set x to sample from Bernoulli distribution using parameter p
-#     x[:,i] = np.random.binomial(1,p,size=x[:,i].shape)
-#
-#   return x
-#
-# test = gen_image(1)
-# plt.imshow(test.reshape(28,28))
-# plt.title("Hope this works!")
-# plt.show()
-#
-# plt.plot(losses[2:])
-# plt.title("Loss")
-# plt.show()
