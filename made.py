@@ -123,6 +123,9 @@ for i in range(10):
     dir_m = out_mask(in_indexes, 0, out_indexes)
     masks[i] = [h1_mask, h2_mask, out_m, dir_m]
 
+# save masks
+np.savez("3_4made_masks", masks = masks)
+
 #instantiate variables
 tf.reset_default_graph()
 
@@ -197,8 +200,4 @@ with tf.Session() as sess:
                      b2 = sess.run(b2),
                      x_hat = sess.run(x_hat),
                      dirr = sess.run(dirr),
-                     x_b_hat = sess.run(x_b_hat),
-                     h1_mask = sess.run(tf.convert_to_tensor(h1_mask)),
-                     h2_mask = sess.run(tf.convert_to_tensor(h2_mask)),
-                     out_mask = sess.run(tf.convert_to_tensor(out_m)),
-                     dir_m = sess.run(tf.convert_to_tensor(dir_m)))
+                     x_b_hat = sess.run(x_b_hat))
