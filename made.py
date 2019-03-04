@@ -1,22 +1,15 @@
+#! usr/bin/env python3
+
 import tensorflow as tf
 import numpy as np
 from matplotlib import pyplot as plt
-from google.colab import files
 import _pickle as cPickle
 import gzip
 np.set_printoptions(threshold=np.nan)
 import time
 
-#upload pickled dataset to colab
-uploaded = files.upload()
-
-#confirm upload
-for fn in uploaded.keys():
-  print('User uploaded file "{name}" with length {length} bytes'.format(
-      name=fn, length=len(uploaded[fn])))
-
 #load with cPickle
-mnist = gzip.open('mnist.pkl.gz','rb')
+mnist = gzip.open('IA/mnist.pkl.gz','rb')
 train, val, test = cPickle.load(mnist, encoding='latin1')
 mnist.close()
 
@@ -192,17 +185,17 @@ with tf.Session() as sess:
   for i in range(500000):
     count = 0 # this is different from counter
     h1_mask, h2_mask, out_m, dir_m = masks[count]
-    if count == 9
+    if count == 9:
         count = 0
-    count++
+    count+= 1
     #start=time.time()
     x_data = gen_data(batch_size)
     _ = sess.run(optimizer,feed_dict={x:x_data})
     print("loss: {}".format(sess.run(loss,feed_dict={x:x_data})))
     #print("out: {}".format(sess.run(out,feed_dict={x:x_data})))
-    if np.mod(i,30000) == 0:
+    if np.mod(i,50000) == 0:
       counter += 1
-      #np.savez("2_4made_weightsv{}".format(counter), w1 = sess.run(w1),
+      np.savez("3_4made_weightsv{}".format(counter), w1 = sess.run(w1),
                      b1 = sess.run(b1),
                      w2 = sess.run(w2),
                      b2 = sess.run(b2),
@@ -221,11 +214,11 @@ with tf.Session() as sess:
 #       losses.append(sess.run(loss, feed_dict={x: x_data}))
 #       # print("Time for last 1000 steps: {}".format(end-start))
 #   # print("All done!")
-# 
+#
 # #upload saved .npz weight file
 # weights = files.upload()
 #
-# files.download('4_3weightsv10.npz')
+# files.download('3_4weightsv10.npz')
 #
 # #use np.load with the filename that google colab saved the uploaded file to,
 # #   then print out the keys just for ease of use. we can now access the saved
