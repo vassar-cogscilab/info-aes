@@ -216,9 +216,9 @@ with tf.Session() as sess:
                      dirr = sess.run(dirr),
                      x_b_hat = sess.run(x_b_hat))
       # visualize current representational capacity
-        test = gen_image(1, h1_mask, h2_mask, out_m, dir_m)
-        plt.figure(figsize=(4,4))
-        plt.imshow(test.reshape(28,28))
-        plt.title("Checkpoint" + str(counter + 1) + "Visualization")
-        plt.show()
-        plt.savefig(str(counter+1) + '_img.png')
+      test = gen_image(1, h1_mask, h2_mask, out_m, dir_m)
+      plt.figure(figsize=(4,4))
+      plt.imshow(test.reshape(28,28))
+      plt.title("Checkpoint" + str(counter + 1) + "Visualization")
+      plt.show()
+      plt.savefig(str(counter+1) + '_img.png')
