@@ -7,7 +7,7 @@ import _pickle as cPickle
 import gzip
 np.set_printoptions(threshold=np.nan)
 import time
-from matplotlib import yplot as plt
+from matplotlib import pyplot as plt
 
 #load with cPickleIA/
 mnist = gzip.open('mnist.pkl.gz','rb')
