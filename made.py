@@ -49,6 +49,7 @@ def gen_data(batch_size):
 
 def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m):
     x = np.random.rand(num_images, features)
+    x = tf.cast(x, tf.float32)
     #iterate time
     for i in range(0,features):
         hidden1 = tf.nn.relu(tf.add(sess.run(b1),tf.matmul(x,tf.multiply(sess.run(w1),h1_mask))))
@@ -58,7 +59,6 @@ def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m):
     p = out[:,i]
     #set x to sample from Bernoulli distribution using parameter p
     x[:,i] = np.random.binomial(1,p,size=x[:,i].shape)
-    x = tf.cast(x, tf.float32)
     return x
 
 random_init = True
