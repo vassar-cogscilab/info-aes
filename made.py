@@ -51,9 +51,9 @@ def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m):
     x = np.random.rand(num_images, features)
     #iterate time
     for i in range(0,features):
-    hidden1 = tf.nn.relu(tf.add(sess.run(b1),tf.matmul(x,tf.multiply(sess.run(w1),h1_mask))))
-    hidden2 = tf.nn.relu(tf.add(sess.run(b2),tf.matmul(hidden1,tf.multiply(sess.run(w2),h2_mask))))
-    out = tf.nn.sigmoid(tf.add(tf.add(sess.run(x_b_hat),tf.matmul(hidden2,tf.multiply(sess.run(x_hat),sess.run(out_m)))), tf.matmul(x,tf.multiply(sess.run(dirr),sess.run(dir_m)))))
+        hidden1 = tf.nn.relu(tf.add(sess.run(b1),tf.matmul(x,tf.multiply(sess.run(w1),h1_mask))))
+        hidden2 = tf.nn.relu(tf.add(sess.run(b2),tf.matmul(hidden1,tf.multiply(sess.run(w2),h2_mask))))
+        out = tf.nn.sigmoid(tf.add(tf.add(sess.run(x_b_hat),tf.matmul(hidden2,tf.multiply(sess.run(x_hat),sess.run(out_m)))), tf.matmul(x,tf.multiply(sess.run(dirr),sess.run(dir_m)))))
     #set p to current pixel probabilities
     p = out[:,i]
     #set x to sample from Bernoulli distribution using parameter p
