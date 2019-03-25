@@ -57,7 +57,7 @@ def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m):
     #set p to current pixel probabilities
     p = out[:,i]
     #set x to sample from Bernoulli distribution using parameter p
-    x[:,i] = np.random.binomial(1,p,size=x[:,i].shape)
+    x[:,i] = tf.convert_to_tensor(np.random.binomial(1,p,size=x[:,i].shape), dtype=tf.float32)
 
     return x
 
