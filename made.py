@@ -7,6 +7,7 @@ import _pickle as cPickle
 import gzip
 np.set_printoptions(threshold=np.nan)
 import time
+from matplotlib import yplot as plt
 
 #load with cPickleIA/
 mnist = gzip.open('mnist.pkl.gz','rb')
@@ -45,6 +46,19 @@ def gen_data(batch_size):
   random_rows = np.random.choice(b_images.shape[0],size=batch_size,replace=False)
   x_data = b_images[random_rows,:]
   return x_data
+
+def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m):
+    x = np.random.rand(num_images, features)
+    #iterate time
+    for i in range(0,features):
+    hidden1 = tf.nn.relu(tf.add(sess.run(b1),tf.matmul(x,tf.multiply(sess.run(w1),h1_mask))))
+    hidden2 = tf.nn.relu(tf.add(sess.run(b2),tf.matmul(hidden1,tf.multiply(sess.run(w2),h2_mask))))
+    out = tf.nn.sigmoid(tf.add(tf.add(sess.run(x_b_hat),tf.matmul(hidden2,tf.multiply(sess.run(x_hat),sess.run(out_m)))), tf.matmul(x,tf.multiply(sess.run(dirr),sess.run(dir_m)))))
+    #set p to current pixel probabilities
+    p = out[:,i]
+    #set x to sample from Bernoulli distribution using parameter p
+    x[:,i] = np.random.binomial(1,p,size=x[:,i].shape)
+    return x
 
 random_init = True
 
@@ -124,7 +138,7 @@ for i in range(10):
     masks[i] = [h1_mask, h2_mask, out_m, dir_m]
 
 # save masks
-np.savez("3_4made_masks", masks = masks)
+np.savez("3_4made_masks", m = masks)
 
 #instantiate variables
 tf.reset_default_graph()
@@ -201,3 +215,10 @@ with tf.Session() as sess:
                      x_hat = sess.run(x_hat),
                      dirr = sess.run(dirr),
                      x_b_hat = sess.run(x_b_hat))
+      # visualize current representational capacity
+        test = gen_image(1, h1_mask, h2_mask, out_m, dir_m)
+        plt.figure(figsize=(4,4))
+        plt.imshow(test.reshape(28,28))
+        plt.title("Checkpoint" + str(counter + 1) + "Visualization")
+        plt.show()
+        plt.savefig(str(counter+1) + '_img.png')
