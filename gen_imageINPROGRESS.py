@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import _pickle as cPickle
 import gzip
-np.set_printoptions(threshold=np.nan)
+#np.set_printoptions(threshold=np.nan)
 import time
 
 #define parameters
@@ -18,6 +18,14 @@ random_init = False
 
 weights = np.load('4_1made_weightsv10.npz')
 
+#activation functions
+def sigmoid_np(x):
+    z = 1/(1 + np.exp(-x))
+    return z
+
+def relu_np(x):
+    z = np.maximum(x,0)
+    return z
 
 def node_index(nodes, features, h, prev_nodes=[1]):
   if h == 0 or h == hidden_layers+1:
@@ -44,29 +52,8 @@ def out_mask(prev_nodes,prev_h,indexes):
       if indexes[j] > prev_nodes[i]:
         mask[i,j] = 1
   return mask
-"""
-masks = dict()
-for i in range(2):
-    in_indexes = node_index(features,features,0)
-    h1_indexes = node_index(hidden_units,features,0+1,prev_nodes=in_indexes)
-    h2_indexes = node_index(hidden_units,features,1+1,prev_nodes=h1_indexes)
-    out_indexes = in_indexes
-    h1_mask = in_mask(in_indexes,0,h1_indexes)
-    h2_mask = in_mask(h1_indexes,1,h2_indexes)
-    out_m = out_mask(h2_indexes,2,out_indexes)
-    dir_m = out_mask(in_indexes, 0, out_indexes)
-    masks[str(i)] = [h1_mask, h2_mask, out_m, dir_m]
 
-# save masks
-#np.savez("4_1made_masks", m = masks)
-f = open("4_1made_masks.pkl", "wb")
-cPickle.dump(masks,f)
-f.close()
-"""
-#f = open("4_1made_masks.pkl", "rb")
-test = cPickle.load(open("4_1made_masks.pkl", "rb"))
-print(type(test['0'][0]))
-print(test['0'][0].shape)
+masks = cPickle.load(open("4_1made_masks.pkl", "rb"))
 
 tf.reset_default_graph()
 
@@ -103,33 +90,36 @@ else:
   #direct connection
   dirr = tf.get_variable("dirr",shape=(features,features),initializer=tf.constant_initializer(weights['dirr']))
 
-#create network
-hidden1 = tf.nn.relu(tf.add(b1,tf.matmul(x,tf.multiply(w1,h1_mask))))
-hidden2 = tf.nn.relu(tf.add(b2,tf.matmul(hidden1,tf.multiply(w2,h2_mask))))
-out = tf.nn.sigmoid(tf.add(tf.add(x_b_hat,tf.matmul(hidden2,tf.multiply(x_hat,out_m))), tf.matmul(x,tf.multiply(dirr,dir_m))))
-
-def cross_entropy(x, y, axis=-1):
-  safe_y = tf.where(tf.equal(x, 0.), tf.ones_like(y), y)
-  return -tf.reduce_sum(x * tf.log(safe_y), axis)
-
-def entropy(x, axis=-1):
-  return cross_entropy(x, x, axis)
-
-#loss function: binary cross entropy
-loss = entropy(out)
-####loss = tf.reduce_sum(-x*tf.log(out)-(1-x)*tf.log(1-out))
-optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(loss)
-init = tf.global_variables_initializer()
-
-
-
 """
-def gen_image(num_images):
-	x = np.random.rand(num_images, features)
-	
-	for i in range(0,features):
-		hidden1 = tf.nn.relu(tf.add(weights['b1'],tf.matmul(x,tf.multiply(weights['w1'],masks[
+def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m):
+    x = tf.random.uniform((num_images, features))
+    #iterate time
+    for i in range(0,features):
+        hidden1 = tf.nn.relu(tf.add(b1,tf.matmul(x,tf.multiply(w1,h1_mask))))
+        hidden2 = tf.nn.relu(tf.add(b2,tf.matmul(hidden1,tf.multiply(w2,h2_mask))))
+        out = tf.nn.sigmoid(tf.add(tf.add(x_b_hat,tf.matmul(hidden2,tf.multiply(x_hat,out_m))), tf.matmul(x,tf.multiply(dirr,dir_m))))
+    #set p to current pixel probabilities
+        p = out[:,i]
+    #set x to sample from Bernoulli distribution using parameter p
+        x[:,i] = np.random.binomial(1,p,size=x[:,i].shape)
+
+    return x
 """
+def gen_image_np(num_images, h1_mask, h2_mask, out_m, dir_m):
+    x = np.random.rand(num_images, features)
+    #iterate time
+    for i in range(0,features):
+        hidden1 = relu_np(np.add(weights['b1'],np.matmul(x,np.multiply(weights['w1'],h1_mask))))
+        hidden2 = relu_np(np.add(weights['b2'],np.matmul(hidden1,np.multiply(weights['w2'],h2_mask))))
+        out = sigmoid_np(np.add(np.add(weights['x_b_hat'],np.matmul(hidden2,np.multiply(weights['x_hat'],out_m))), np.matmul(x,np.multiply(weights['dirr'],dir_m))))
+    #set p to current pixel probabilities
+        p = out[:,i]
+    #set x to sample from Bernoulli distribution using parameter p
+        x[:,i] = np.random.binomial(1,p,size=x[:,i].shape)
 
+    return x
 
-
+im = gen_image_np(1,masks['0'][0],masks['0'][1],masks['0'][2],masks['0'][3])
+plt.imshow(im.reshape(28,28),cmap='gray')
+plt.colorbar()
+plt.show()
