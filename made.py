@@ -47,10 +47,10 @@ def gen_data(batch_size):
   x_data = b_images[random_rows,:]
   return x_data
 
-def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m):
+def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m, in_indexes):
     x = tf.random.uniform((num_images, features))
     #iterate time
-    for i in range(0,features):
+    for i in in_indexes:
         hidden1 = tf.nn.relu(tf.add(sess.run(b1),tf.matmul(x,tf.multiply(sess.run(w1),h1_mask))))
         hidden2 = tf.nn.relu(tf.add(sess.run(b2),tf.matmul(hidden1,tf.multiply(sess.run(w2),h2_mask))))
         out = tf.nn.sigmoid(tf.add(tf.add(sess.run(x_b_hat),tf.matmul(hidden2,tf.multiply(sess.run(x_hat),sess.run(out_m)))), tf.matmul(x,tf.multiply(sess.run(dirr),sess.run(dir_m)))))
@@ -136,7 +136,7 @@ for i in range(10):
     h2_mask = in_mask(h1_indexes,1,h2_indexes)
     out_m = out_mask(h2_indexes,2,out_indexes)
     dir_m = out_mask(in_indexes, 0, out_indexes)
-    masks[i] = [h1_mask, h2_mask, out_m, dir_m]
+    masks[i] = [h1_mask, h2_mask, out_m, dir_m, in_indexes]
 
 # save masks
 np.savez("3_4made_masks", m = masks)
@@ -217,7 +217,7 @@ with tf.Session() as sess:
                      dirr = sess.run(dirr),
                      x_b_hat = sess.run(x_b_hat))
       # visualize current representational capacity
-      test = gen_image(1, h1_mask, h2_mask, out_m, dir_m)
+      test = gen_image(1, h1_mask, h2_mask, out_m, dir_m, in_indexes)
       plt.figure(figsize=(4,4))
       plt.imshow(test.reshape(28,28))
       plt.title("Checkpoint" + str(counter + 1) + "Visualization")
