@@ -9,14 +9,16 @@ import gzip
 import time
 
 #define parameters
-batch_size = 128
+batch_size = 256
 features = 784
 hidden_layers = 2
-hidden_units = 500
+hidden_units = 4000
+weights_filename = '4_8made_weightsv10.npz'
+masks_filename = '4_8made_masks.pkl'
 
 random_init = False
 
-weights = np.load('4_1made_weightsv10.npz')
+weights = np.load(weights_filename)
 
 #activation functions
 def sigmoid_np(x):
@@ -52,8 +54,27 @@ def out_mask(prev_nodes,prev_h,indexes):
       if indexes[j] > prev_nodes[i]:
         mask[i,j] = 1
   return mask
+"""
+masks = dict()
+for i in range(2):
+    in_indexes = node_index(features,features,0)
+    h1_indexes = node_index(hidden_units,features,0+1,prev_nodes=in_indexes)
+    h2_indexes = node_index(hidden_units,features,1+1,prev_nodes=h1_indexes)
+    out_indexes = in_indexes
+    h1_mask = in_mask(in_indexes,0,h1_indexes)
+    h2_mask = in_mask(h1_indexes,1,h2_indexes)
+    out_m = out_mask(h2_indexes,2,out_indexes)
+    dir_m = out_mask(in_indexes, 0, out_indexes)
+    masks[str(i)] = [h1_mask, h2_mask, out_m, dir_m]
 
-masks = cPickle.load(open("4_1made_masks.pkl", "rb"))
+# save masks
+#np.savez("4_1made_masks", m = masks)
+f = open("4_1made_masks.pkl", "wb")
+cPickle.dump(masks,f)
+f.close()
+"""
+#f = open("4_1made_masks.pkl", "rb")
+masks = cPickle.load(open(masks_filename, "rb"))
 
 tf.reset_default_graph()
 
@@ -90,7 +111,6 @@ else:
   #direct connection
   dirr = tf.get_variable("dirr",shape=(features,features),initializer=tf.constant_initializer(weights['dirr']))
 
-"""
 def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m):
     x = tf.random.uniform((num_images, features))
     #iterate time
@@ -104,11 +124,12 @@ def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m):
         x[:,i] = np.random.binomial(1,p,size=x[:,i].shape)
 
     return x
-"""
-def gen_image_np(num_images, h1_mask, h2_mask, out_m, dir_m):
+
+def gen_image_np(num_images, h1_mask, h2_mask, out_m, dir_m, in_indexes):
     x = np.random.rand(num_images, features)
     #iterate time
-    for i in range(0,features):
+    for n in range(1, features+1):
+        i = np.where(in_indexes == n);
         hidden1 = relu_np(np.add(weights['b1'],np.matmul(x,np.multiply(weights['w1'],h1_mask))))
         hidden2 = relu_np(np.add(weights['b2'],np.matmul(hidden1,np.multiply(weights['w2'],h2_mask))))
         out = sigmoid_np(np.add(np.add(weights['x_b_hat'],np.matmul(hidden2,np.multiply(weights['x_hat'],out_m))), np.matmul(x,np.multiply(weights['dirr'],dir_m))))
@@ -119,7 +140,12 @@ def gen_image_np(num_images, h1_mask, h2_mask, out_m, dir_m):
 
     return x
 
-im = gen_image_np(1,masks['0'][0],masks['0'][1],masks['0'][2],masks['0'][3])
+plt.plot(weights['losses'])
+plt.show()
+
+im = gen_image_np(1,masks['0'][0],masks['0'][1],masks['0'][2],masks['0'][3],masks['0'][4])
+plt.title("Mask 1")
 plt.imshow(im.reshape(28,28),cmap='gray')
 plt.colorbar()
 plt.show()
+#plt.savefig("mask1.pdf",bbox_inches='tight')
