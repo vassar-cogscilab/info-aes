@@ -7,18 +7,19 @@ import _pickle as cPickle
 import gzip
 np.set_printoptions(threshold=np.nan)
 import time
-from matplotlib import pyplot as plt
 
-#load with cPickleIA/
+#load with cPickle
 mnist = gzip.open('mnist.pkl.gz','rb')
 train, val, test = cPickle.load(mnist, encoding='latin1')
 mnist.close()
 
 #define parameters
-batch_size = 128
+batch_size = 256
 features = 784
 hidden_layers = 2
-hidden_units = 500
+hidden_units = 4000
+steps = 500000
+check = steps/10
 
 #activation functions
 def sigmoid_np(x):
@@ -46,6 +47,7 @@ def gen_data(batch_size):
   random_rows = np.random.choice(b_images.shape[0],size=batch_size,replace=False)
   x_data = b_images[random_rows,:]
   return x_data
+"""
 
 def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m, in_indexes):
     x = tf.random.uniform((num_images, features))
@@ -60,7 +62,7 @@ def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m, in_indexes):
     x[:,i] = tf.convert_to_tensor(np.random.binomial(1,p,size=x[:,i].shape), dtype=tf.float32)
 
     return x
-
+"""
 random_init = True
 
 """
@@ -73,8 +75,8 @@ input parameters: nodes, an int representing the number of nodes in the layer
                     assigned
                   prev_nodes, a list/array that represents all of the indices
                     represented in the previous layer. default is 1 because when
-                    using np.amin and creating indices for the first hidden layer,
-                    it needs to be 1. otherwise, replace with a list/array of
+                  not  using np.amin and creating indices for the first hidden layer,
+                    it ne 203, in <meeds to be 1. otherwise, replace with a list/array of
                     previous layer indices.
 output: indexes, an array representing the assigned indices for the layer the
 function was called for.
@@ -91,7 +93,7 @@ def node_index(nodes, features, h, prev_nodes=[1]):
 in_mask: generate a mask matrix for input or hidden layers not connected to the
   output layer
 input parameters: prev_nodes, an array containing the indexes of the nodes of the
-                    previous layer
+                    preve 203, in <mious layer
                   prev_h, an int representing the layer number of the previous
                     layer
                   indexes, an array containing the indexes of the nodes of the
@@ -111,7 +113,7 @@ out_mask: generate a mask matrix for the hidden layer connected to the output
    layer
 input parameters: prev_nodes, a array containing the indexes of the nodes of the
                     previous layer
-                  prev_h, an int representing the layer number of the previous
+                  prev, an int representing the layer number of the previous
                     layer
                   indexes, an array containing the indexes of the nodes of the
                     layer for which the mask is being generated
@@ -136,10 +138,13 @@ for i in range(10):
     h2_mask = in_mask(h1_indexes,1,h2_indexes)
     out_m = out_mask(h2_indexes,2,out_indexes)
     dir_m = out_mask(in_indexes, 0, out_indexes)
-    masks[i] = [h1_mask, h2_mask, out_m, dir_m, in_indexes]
+    masks[str(i)] = [h1_mask, h2_mask, out_m, dir_m, in_indexes]
 
 # save masks
-np.savez("3_4made_masks", m = masks)
+#np.savez("4_1made_masks", m = masks)
+f = open("4_8made_masks.pkl", "wb")
+cPickle.dump(masks,f)
+f.close()
 
 #instantiate variables
 tf.reset_default_graph()
@@ -190,7 +195,7 @@ def entropy(x, axis=-1):
   return cross_entropy(x, x, axis)
 
 #loss function: binary cross entropy
-loss = entropy(out)
+loss = tf.reduce_mean(entropy(out))
 ####loss = tf.reduce_sum(-x*tf.log(out)-(1-x)*tf.log(1-out))
 optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(loss)
 init = tf.global_variables_initializer()
@@ -199,27 +204,33 @@ init = tf.global_variables_initializer()
 with tf.Session() as sess:
   sess.run(init)
   counter = 0
-  for i in range(500000):
+  losses = []
+  for i in range(steps):
     count = 0 # this is different from counter
-    h1_mask, h2_mask, out_m, dir_m = masks[count]
+    #h1_mask, h2_mask, out_m, dir_m = masks[str(count)]
     if count == 9:
         count = 0
     count+= 1
     x_data = gen_data(batch_size)
     _ = sess.run(optimizer,feed_dict={x:x_data})
-    if np.mod(i,50000) == 0:
+    if np.mod(i,check) == 0:
       counter += 1
-      np.savez("3_4made_weightsv{}".format(counter), w1 = sess.run(w1),
+      losses.append(sess.run(loss, feed_dict={x:x_data}))
+      np.savez("4_8made_weightsv{}".format(counter), w1 = sess.run(w1),
                      b1 = sess.run(b1),
                      w2 = sess.run(w2),
                      b2 = sess.run(b2),
                      x_hat = sess.run(x_hat),
                      dirr = sess.run(dirr),
-                     x_b_hat = sess.run(x_b_hat))
-      # visualize current representational capacity
-      test = gen_image(1, h1_mask, h2_mask, out_m, dir_m, in_indexes)
+                     x_b_hat = sess.run(x_b_hat),
+                     losses = losses)
+
+# visualize current representational capacity - TODO
+"""
+      test = gen_image(1, h1_mask, h2_mask, out_m, dir_m)
       plt.figure(figsize=(4,4))
       plt.imshow(test.reshape(28,28))
       plt.title("Checkpoint" + str(counter + 1) + "Visualization")
       plt.show()
       plt.savefig(str(counter+1) + '_img.png')
+"""
