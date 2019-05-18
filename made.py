@@ -49,10 +49,10 @@ def gen_data(batch_size):
   return x_data
 """
 
-def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m, in_indexes):
+def gen_image(num_images, h1_mask, h2_mask, out_m, dir_m):
     x = tf.random.uniform((num_images, features))
     #iterate time
-    for i in in_indexes:
+    for i in range(0,features):
         hidden1 = tf.nn.relu(tf.add(sess.run(b1),tf.matmul(x,tf.multiply(sess.run(w1),h1_mask))))
         hidden2 = tf.nn.relu(tf.add(sess.run(b2),tf.matmul(hidden1,tf.multiply(sess.run(w2),h2_mask))))
         out = tf.nn.sigmoid(tf.add(tf.add(sess.run(x_b_hat),tf.matmul(hidden2,tf.multiply(sess.run(x_hat),sess.run(out_m)))), tf.matmul(x,tf.multiply(sess.run(dirr),sess.run(dir_m)))))
@@ -93,7 +93,7 @@ def node_index(nodes, features, h, prev_nodes=[1]):
 in_mask: generate a mask matrix for input or hidden layers not connected to the
   output layer
 input parameters: prev_nodes, an array containing the indexes of the nodes of the
-                    preve 203, in <mious layer
+                  b_images  preve 203, in <mious layer
                   prev_h, an int representing the layer number of the previous
                     layer
                   indexes, an array containing the indexes of the nodes of the
@@ -110,7 +110,7 @@ def in_mask(prev_nodes,prev_h,indexes):
   return mask
 """
 out_mask: generate a mask matrix for the hidden layer connected to the output
-   layer
+   layer x_data
 input parameters: prev_nodes, a array containing the indexes of the nodes of the
                     previous layer
                   prev, an int representing the layer number of the previous
@@ -129,7 +129,7 @@ def out_mask(prev_nodes,prev_h,indexes):
   return mask
 
 masks = dict()
-for i in range(10):
+for i in range(1):
     in_indexes = node_index(features,features,0)
     h1_indexes = node_index(hidden_units,features,0+1,prev_nodes=in_indexes)
     h2_indexes = node_index(hidden_units,features,1+1,prev_nodes=h1_indexes)
@@ -142,7 +142,7 @@ for i in range(10):
 
 # save masks
 #np.savez("4_1made_masks", m = masks)
-f = open("4_8made_masks.pkl", "wb")
+f = open("4_29masktestmask.pkl", "wb")
 cPickle.dump(masks,f)
 f.close()
 
@@ -191,32 +191,43 @@ def cross_entropy(x, y, axis=-1):
   safe_y = tf.where(tf.equal(x, 0.), tf.ones_like(y), y)
   return -tf.reduce_sum(x * tf.log(safe_y), axis)
 
-def entropy(x, axis=-1):
-  return cross_entropy(x, x, axis)
-
-#loss function: binary cross entropy
-loss = tf.reduce_mean(entropy(out))
+def entropy(x,axis=-1):
+  return cross_entropy(x,x,axis)
 ####loss = tf.reduce_sum(-x*tf.log(out)-(1-x)*tf.log(1-out))
+loss=entropy(out)
 optimizer = tf.train.AdamOptimizer(learning_rate=0.0005).minimize(loss)
 init = tf.global_variables_initializer()
 
-#run Session
+#run Session      # save current weights
 with tf.Session() as sess:
   sess.run(init)
   counter = 0
   losses = []
+  # randomly select input images to be used for auto-encoding capacity visualization
+  """
+  samples = 2
+  input_x = np.empty((28*samples,28*samples))
+  test_data = gen_data(batch_size)
+  for j in range(samples):
+            test_data = test_data[:,:784]
+            input_x[i*28:(i+1)*28,j*28:(j+1)*28] = test_data[j].reshape([28,28])
+  plt.imshow(input_x, origin="upper", cmap="gray")
+  plt.title("Test Input Images")
+  plt.savefig("4_29test_images.png")
+  """
   for i in range(steps):
     count = 0 # this is different from counter
-    #h1_mask, h2_mask, out_m, dir_m = masks[str(count)]
-    if count == 9:
-        count = 0
-    count+= 1
+    h1_mask, h2_mask, out_m, dir_m = masks[str(count)][0], masks[str(count)][1],masks[str(count)][2], masks[str(count)][3]
+    #if count == 9:
+    #    count = 0
+    #count+= 1
     x_data = gen_data(batch_size)
     _ = sess.run(optimizer,feed_dict={x:x_data})
     if np.mod(i,check) == 0:
       counter += 1
       losses.append(sess.run(loss, feed_dict={x:x_data}))
-      np.savez("4_8made_weightsv{}".format(counter), w1 = sess.run(w1),
+      #save current weights
+      np.savez("4_29masktestv{}".format(counter), w1 = sess.run(w1),
                      b1 = sess.run(b1),
                      w2 = sess.run(w2),
                      b2 = sess.run(b2),
@@ -224,13 +235,27 @@ with tf.Session() as sess:
                      dirr = sess.run(dirr),
                      x_b_hat = sess.run(x_b_hat),
                      losses = losses)
+      samples = 1
+      input_x = np.empty((28*samples,28*samples))
+      output_x = np.empty((28*samples,28*samples))
 
-# visualize current representational capacity - TODO
-"""
-      test = gen_image(1, h1_mask, h2_mask, out_m, dir_m)
-      plt.figure(figsize=(4,4))
-      plt.imshow(test.reshape(28,28))
-      plt.title("Checkpoint" + str(counter + 1) + "Visualization")
-      plt.show()
-      plt.savefig(str(counter+1) + '_img.png')
-"""
+      for ii in range(samples):
+        xx = gen_data(batch_size)
+        test_data = sess.run(out, feed_dict={x:xx})
+
+        for j in range(samples):
+          xx = xx[:,:784]
+          input_x[ii*28:(ii+1)*28,j*28:(j+1)*28] = xx[j].reshape([28,28])
+
+        for j in range(samples):
+          test_data = test_data[:,:784]
+          output_x[ii*28:(ii+1)*28,j*28:(j+1)*28] = test_data[j].reshape([28,28])
+
+      plt.imshow(input_x,origin="upper",cmap="gray")
+      plt.title("Test Input Images")
+      plt.savefig("4_29test_imagesinputv{}.png".format(counter))
+
+      plt.imshow(output_x,origin="upper",cmap="gray")
+      plt.title("Test Output Images")
+      plt.savefig("4_29test_outputv{}.png".format(counter))
+      # visualize current auto-encoding capacity
