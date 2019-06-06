@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Layer
 from tensorflow.keras import Model
+from MADE.KerasImplementation.layers import MaskedDense
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -33,6 +34,10 @@ y_test = tf.keras.utils.to_categorical(y_test, num_classes=10)
 batch_size = 256
 hidden_units = 50
 
+# NOTE ON LAYER OUTPUTS AND INPUTS. Because the masked layers require multiple
+#   inputs (specifically, the previous layers' output matrix and node index
+#   list), every layer save for the first "expects" a dictionary with keys
+#   'output' and 'indices' as input
 # make network
 inputs = tf.keras.Input(shape=(28,28))
 flatten = tf.keras.layers.Flatten()(inputs) # flatten matrix data to vectors
