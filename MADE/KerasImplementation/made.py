@@ -6,7 +6,7 @@ from MADE.KerasImplementation.layers import MaskedDense
 import numpy as np
 import matplotlib.pyplot as plt
 
-# for now, we'll use MNIST as our dataset
+"""# for now, we'll use MNIST as our dataset
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
 # define binarize function for rank 1 tensors
@@ -26,13 +26,12 @@ for i in range(x_train.shape[0]): # iterate through every training pixel:
 
 # do one-hot encoding
 y_train = tf.keras.utils.to_categorical(y_train, num_classes=10)
-y_test = tf.keras.utils.to_categorical(y_test, num_classes=10)
-
-# implement masking as custom keras layer
+y_test = tf.keras.utils.to_categorical(y_test, num_classes=10)"""
 
 # network parameters
 batch_size = 256
 hidden_units = 50
+features = 784
 
 # NOTE ON LAYER OUTPUTS AND INPUTS. Because the masked layers require multiple
 #   inputs (specifically, the previous layers' output matrix and node index
@@ -41,9 +40,9 @@ hidden_units = 50
 # make network
 inputs = tf.keras.Input(shape=(28,28))
 flatten = tf.keras.layers.Flatten()(inputs) # flatten matrix data to vectors
-h_1 = tf.keras.layers.Dense(hidden_units, activation='relu')(flatten) #
-h_2 = tf.keras.layers.Dense(hidden_units, activation='relu')(h_1)
-h_3 = tf.keras.layers.Dense(hidden_units, activation='relu')(h_2)
+h_1 = MaskedDense(hidden_units, features)(flatten) #
+h_2 = MaskedDense(hidden_units, features)(h_1)
+h_3 = MaskedDense(hidden_units, features)(h_2)
 outputs = tf.keras.layers.Dense(784, activation='sigmoid')(h_3)
 unflatten = tf.keras.layers.Reshape((28,28))(outputs)
 made = Model(inputs=inputs, outputs=unflatten)
