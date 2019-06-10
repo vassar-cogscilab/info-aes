@@ -1,9 +1,9 @@
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Layer
+from tensorflow.keras import layers
 from tensorflow.keras import Model
+# from KerasImplementation.layers import MaskedDense
 from MADE.KerasImplementation.layers import MaskedDense
-from MADE.KerasImplementation.layers import TempOutput
 import numpy as np
 import matplotlib.pyplot as plt
 import math
@@ -73,12 +73,15 @@ masks = gen_masks(features, hidden_layers, hidden_units)
 # make network
 inputs = tf.keras.Input(shape=(28,28))
 flatten = tf.keras.layers.Flatten()(inputs) # flatten matrix data to vectors
-h_1 = MaskedDense(hidden_units, masks[0])(flatten) 
-h_2 = MaskedDense(hidden_units, masks[1])(h_1)
-h_3 = MaskedDense(hidden_units, masks[2])(h_2)
-h_4 = MaskedDense(hidden_units, masks[3])(h_3)
-h_5 = MaskedDense(hidden_units, masks[4])(h_4)
-outputs = TempOutput(784, masks[5])(h_5)
+h_1 = MaskedDense(hidden_units, masks[0], 'relu')(flatten) 
+h_2 = MaskedDense(hidden_units, masks[1], 'relu')(h_1)
+h_3 = MaskedDense(hidden_units, masks[2], 'relu')(h_2)
+h_4 = MaskedDense(hidden_units, masks[3], 'relu')(h_3)
+h_5 = MaskedDense(hidden_units, masks[4], 'relu')(h_4)
+h_out = MaskedDense(784, masks[5])(h_5)
+direct_out = MaskedDense(784, masks[6])(flatten)
+merge = tf.keras.layers.Add()([h_out, direct_out])
+outputs = tf.keras.layers.Activation('sigmoid')(merge)
 unflatten = tf.keras.layers.Reshape((28,28))(outputs)
 made = Model(inputs=inputs, outputs=unflatten)
 made.summary()
@@ -87,7 +90,7 @@ made.compile(optimizer=tf.keras.optimizers.Adam(0.001),
     metrics=['accuracy'])
 
 # train model
-history=made.fit(x=x_train,y=x_train,batch_size=batch_size,epochs=60,verbose=0)
+history=made.fit(x=x_train,y=x_train,batch_size=batch_size,epochs=10,verbose=1)
 
 # visualize training
 plt.plot(history.history['accuracy'])
@@ -180,10 +183,10 @@ def generate_samples(num_samples):
     plot_size = math.ceil(math.sqrt(num_samples))
     generated_samples = plt.figure(figsize=(10,10), facecolor='#ffffff')
     for i in range(num_samples):
-        output = np.zeros(input.shape, dtype=np.float32)
+        output = np.zeros([features, features], dtype=np.float32)
         noise = np.random.binomial(1,noise_parameter,size=(1,28,28))
         row_length = noise.shape[1]
-        for j in range(1, len(input.flatten())): 
+        for j in range(1, features): 
             noise = made.predict(noise,batch_size=1)
             p = noise[0][j//row_length][j%row_length]
             sample = np.random.binomial(1, p)
