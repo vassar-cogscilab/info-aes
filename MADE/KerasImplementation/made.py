@@ -1,24 +1,42 @@
+#!/usr/bin/env python3
+
 import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras import layers
 from tensorflow.keras import Model
+# from MADE.KerasImplementation.layers import MaskedDense
+from layers import MaskedDense
 # from KerasImplementation.layers import MaskedDense
-from MADE.KerasImplementation.layers import MaskedDense
 import numpy as np
 import matplotlib.pyplot as plt
 import math
 
 # for now, we'll use MNIST as our dataset
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()\
 
-x_test = np.digitize(x_test, [0.0, 128]) - 1
-x_train = np.digitize(x_train, [0.0, 128]) - 1
+# binarize
+x_test = np.digitize(x_test, [0, 32]) - 1
+x_train = np.digitize(x_train, [0, 32]) - 1
+
+mnist_samples = plt.figure(figsize=(5,5), facecolor='#ffffff')
+for i in range(64):
+    image = x_train[np.random.randint(0,x_train.shape[0]+1)]
+    subplot = mnist_samples.add_subplot(math.sqrt(64), math.sqrt(64), i+1)
+    subplot.imshow(image,cmap='gray')
+    subplot.axis('off')
+plt.show()
 
 # network parameters
 batch_size = 100
+num_epochs = 100
+learning_rate = 0.01
+epsilon = 0.000001
+mask_randomization = True
 hidden_layers = 5
-hidden_units = 150
+hidden_units = 1000
 features = 784
+fname = '6_10_made_1000_2.h5' # filename for saving trained network when executing in terminal
+
 
 # generate an array of mask matrices
 def gen_masks(features, hidden_layers, hidden_units):
@@ -36,7 +54,7 @@ def gen_masks(features, hidden_layers, hidden_units):
         # we must generate a list of node indices for this layer
         layer_indices = []
         for j in range(hidden_units):
-            layer_indices.append(np.random.randint(1, features - 1))
+            layer_indices.append(np.random.randint(min(input_indices), features - 1))
         mask = np.zeros((input_dim, hidden_units), dtype=np.float32)
         # populate mask with appropriate values
         for j in range(len(input_indices)): # iterate over every layer node
@@ -76,8 +94,8 @@ flatten = tf.keras.layers.Flatten()(inputs) # flatten matrix data to vectors
 h_1 = MaskedDense(hidden_units, masks[0], 'relu')(flatten) 
 h_2 = MaskedDense(hidden_units, masks[1], 'relu')(h_1)
 h_3 = MaskedDense(hidden_units, masks[2], 'relu')(h_2)
-h_4 = MaskedDense(hidden_units, masks[3], 'relu')(h_3)
-h_5 = MaskedDense(hidden_units, masks[4], 'relu')(h_4)
+h_4 = MaskedDense(hidden_units, masks[3])(h_3)
+h_5 = MaskedDense(hidden_units, masks[4])(h_4)
 h_out = MaskedDense(784, masks[5])(h_5)
 direct_out = MaskedDense(784, masks[6])(flatten)
 merge = tf.keras.layers.Add()([h_out, direct_out])
@@ -85,20 +103,12 @@ outputs = tf.keras.layers.Activation('sigmoid')(merge)
 unflatten = tf.keras.layers.Reshape((28,28))(outputs)
 made = Model(inputs=inputs, outputs=unflatten)
 made.summary()
-made.compile(optimizer=tf.keras.optimizers.Adam(0.001),
-    loss=tf.keras.losses.MeanSquaredError(),
-    metrics=['accuracy'])
+made.compile(optimizer=tf.keras.optimizers.Adagrad(learning_rate, epsilon),
+    loss='binary_crossentropy')
 
-# train model
-history=made.fit(x=x_train,y=x_train,batch_size=batch_size,epochs=10,verbose=1)
 
-# visualize training
-plt.plot(history.history['accuracy'])
-plt.title('Model accuracy')
-plt.ylabel('Accuracy')
-plt.xlabel('Epoch')
-plt.show()
-
+history = made.fit(x=x_train,y=x_train,batch_size=batch_size,epochs=num_epochs,verbose=1)
+    
 # Plot training & validation loss values
 plt.plot(history.history['loss'])
 plt.title('Model loss')
@@ -107,7 +117,6 @@ plt.xlabel('Epoch')
 plt.show()
 
 # visualize auto-encoding and generative capacities
-
 # auto-encoding
 def auto_encode(num_samples):
     # visualize inputs
@@ -151,6 +160,7 @@ def zoom_generation(start, end, step):
             subplot.axis('off')
     plt.show()
 
+
 def generate_sample_with_history(noise_parameter):
     noise = np.random.binomial(1,noise_parameter,size=(1,28,28))
     row_length = noise.shape[1]
@@ -178,24 +188,28 @@ def generate_sample_with_history(noise_parameter):
     plt.imshow(output,cmap='gray')
     plt.show()
 
+
 def generate_samples(num_samples):
     noise_parameter = np.random.rand()
     plot_size = math.ceil(math.sqrt(num_samples))
     generated_samples = plt.figure(figsize=(10,10), facecolor='#ffffff')
     for i in range(num_samples):
-        output = np.zeros([features, features], dtype=np.float32)
         noise = np.random.binomial(1,noise_parameter,size=(1,28,28))
+        output = np.zeros(noise[0].shape, dtype=np.float32)
         row_length = noise.shape[1]
-        for j in range(1, features): 
+        for j in range(1, len(noise.flatten())): 
             noise = made.predict(noise,batch_size=1)
             p = noise[0][j//row_length][j%row_length]
             sample = np.random.binomial(1, p)
+            noise[0][j//row_length][j%row_length] = p
             output[j//row_length][j%row_length] = sample
         subplot = generated_samples.add_subplot(plot_size, plot_size, i+1)
         subplot.imshow(output,cmap='gray')
         subplot.axis('off')
     plt.show()
 
-generate_samples(25)
+generate_samples(9)
 
 auto_encode(64)
+
+made.save(fname)
