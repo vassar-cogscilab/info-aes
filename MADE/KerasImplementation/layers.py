@@ -1,7 +1,3 @@
-"""
-NOTES TO SELF 6/6 4:16 PM
-–– pass masks as arguments to layers.
-"""
 import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Layer
@@ -15,7 +11,6 @@ from tensorflow.python.framework import ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import gen_math_ops
 from tensorflow.python.ops import standard_ops
-
 import numpy as np
 
 

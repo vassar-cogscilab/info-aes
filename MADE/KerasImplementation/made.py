@@ -5,38 +5,40 @@ from tensorflow.keras import backend as K
 from tensorflow.keras import layers
 from tensorflow.keras import Model
 # from MADE.KerasImplementation.layers import MaskedDense
-from layers import MaskedDense
-# from KerasImplementation.layers import MaskedDense
+# from layers import MaskedDense
+from KerasImplementation.layers import MaskedDense
 import numpy as np
 import matplotlib.pyplot as plt
 import math
 
 # for now, we'll use MNIST as our dataset
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()\
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
 # binarize
 x_test = np.digitize(x_test, [0, 32]) - 1
 x_train = np.digitize(x_train, [0, 32]) - 1
 
-mnist_samples = plt.figure(figsize=(5,5), facecolor='#ffffff')
-for i in range(64):
-    image = x_train[np.random.randint(0,x_train.shape[0]+1)]
-    subplot = mnist_samples.add_subplot(math.sqrt(64), math.sqrt(64), i+1)
-    subplot.imshow(image,cmap='gray')
-    subplot.axis('off')
-plt.show()
+# mnist_samples = plt.figure(figsize=(5,5), facecolor='#ffffff')
+# for i in range(64):
+#     image = x_train[np.random.randint(0,x_train.shape[0]+1)]
+#     subplot = mnist_samples.add_subplot(math.sqrt(64), math.sqrt(64), i+1)
+#     subplot.imshow(image,cmap='gray')
+#     subplot.axis('off')
+# plt.show()
 
 # network parameters
 batch_size = 100
-num_epochs = 100
-learning_rate = 0.01
-epsilon = 0.000001
-mask_randomization = True
-hidden_layers = 5
+num_epochs = 50
+learning_rate = 0.01 # training parameter
+epsilon = 0.000001 # training parameter
+# mask_randomization = True
+hidden_layers = 2
 hidden_units = 1000
 features = 784
-fname = '6_10_made_1000_2.h5' # filename for saving trained network when executing in terminal
-
+fname = 'Tuning/6_11_made_' # save trained networks
+samples_fname = 'Tuning/6_11_made_samples_'
+autoencode_fname = 'Tuning/6_11_made_autoencode_'
+num_models = 10
 
 # generate an array of mask matrices
 def gen_masks(features, hidden_layers, hidden_units):
@@ -50,6 +52,7 @@ def gen_masks(features, hidden_layers, hidden_units):
             input_dim = features
             for j in range(features):
                 first_input_indices.append(j+1)
+            np.random.shuffle(first_input_indices)
             input_indices = first_input_indices
         # we must generate a list of node indices for this layer
         layer_indices = []
@@ -82,43 +85,9 @@ def gen_masks(features, hidden_layers, hidden_units):
     masks.append(direct_mask)
     return masks
 
-masks = gen_masks(features, hidden_layers, hidden_units)
-
-# NOTE ON LAYER OUTPUTS AND INPUTS. Because the masked layers require multiple
-#   inputs (specifically, the previous layers' output matrix and node index
-#   list), every layer save for the first "expects" a dictionary with keys
-#   'output' and 'indices' as input
-# make network
-inputs = tf.keras.Input(shape=(28,28))
-flatten = tf.keras.layers.Flatten()(inputs) # flatten matrix data to vectors
-h_1 = MaskedDense(hidden_units, masks[0], 'relu')(flatten) 
-h_2 = MaskedDense(hidden_units, masks[1], 'relu')(h_1)
-h_3 = MaskedDense(hidden_units, masks[2], 'relu')(h_2)
-h_4 = MaskedDense(hidden_units, masks[3])(h_3)
-h_5 = MaskedDense(hidden_units, masks[4])(h_4)
-h_out = MaskedDense(784, masks[5])(h_5)
-direct_out = MaskedDense(784, masks[6])(flatten)
-merge = tf.keras.layers.Add()([h_out, direct_out])
-outputs = tf.keras.layers.Activation('sigmoid')(merge)
-unflatten = tf.keras.layers.Reshape((28,28))(outputs)
-made = Model(inputs=inputs, outputs=unflatten)
-made.summary()
-made.compile(optimizer=tf.keras.optimizers.Adagrad(learning_rate, epsilon),
-    loss='binary_crossentropy')
-
-
-history = made.fit(x=x_train,y=x_train,batch_size=batch_size,epochs=num_epochs,verbose=1)
-    
-# Plot training & validation loss values
-plt.plot(history.history['loss'])
-plt.title('Model loss')
-plt.ylabel('Loss')
-plt.xlabel('Epoch')
-plt.show()
-
 # visualize auto-encoding and generative capacities
 # auto-encoding
-def auto_encode(num_samples):
+def auto_encode(model, num_samples, fname=None):
     # visualize inputs
     original_images = plt.figure(figsize=(5,5), facecolor='#ffffff')
     # visualize auto-encodings
@@ -130,11 +99,14 @@ def auto_encode(num_samples):
         subplot.axis('off')
         input = np.empty((1,28,28))
         input[0] = proto_input
-        output = made.predict(input,batch_size=1)
+        output = model.predict(input,batch_size=1)
         subplot = output_images.add_subplot(math.sqrt(num_samples), math.sqrt(num_samples), i+1)
         subplot.imshow(output[0],cmap='gray')
         subplot.axis('off')
-    plt.show()
+    if fname == None:
+        plt.show()
+    if fname != None:
+        plt.savefig(fname)
     
 
 # novel sample generation
@@ -189,7 +161,7 @@ def generate_sample_with_history(noise_parameter):
     plt.show()
 
 
-def generate_samples(num_samples):
+def generate_samples(model, num_samples, fname=None):
     noise_parameter = np.random.rand()
     plot_size = math.ceil(math.sqrt(num_samples))
     generated_samples = plt.figure(figsize=(10,10), facecolor='#ffffff')
@@ -198,7 +170,7 @@ def generate_samples(num_samples):
         output = np.zeros(noise[0].shape, dtype=np.float32)
         row_length = noise.shape[1]
         for j in range(1, len(noise.flatten())): 
-            noise = made.predict(noise,batch_size=1)
+            noise = model.predict(noise,batch_size=1)
             p = noise[0][j//row_length][j%row_length]
             sample = np.random.binomial(1, p)
             noise[0][j//row_length][j%row_length] = p
@@ -206,10 +178,44 @@ def generate_samples(num_samples):
         subplot = generated_samples.add_subplot(plot_size, plot_size, i+1)
         subplot.imshow(output,cmap='gray')
         subplot.axis('off')
-    plt.show()
+    if fname == None:
+        plt.show()
+    if fname != None:
+        plt.savefig(fname)
 
-generate_samples(9)
+for i in range(num_models):
+    # remove any previous models
+    tf.keras.backend.clear_session()
 
-auto_encode(64)
+    print('Now onto model number ' + str(i+1) + '.')
+    masks = gen_masks(features, hidden_layers, hidden_units)
 
-made.save(fname)
+    # make network
+    inputs = tf.keras.Input(shape=(28,28))
+    flatten = tf.keras.layers.Flatten()(inputs) # flatten matrix data to vectors
+    h_1 = MaskedDense(hidden_units, masks[0], 'relu')(flatten) 
+    h_2 = MaskedDense(hidden_units, masks[1], 'relu')(h_1)
+    h_out = MaskedDense(784, masks[2])(h_2)
+    direct_out = MaskedDense(784, masks[3])(flatten)
+    merge = tf.keras.layers.Add()([h_out, direct_out])
+    outputs = tf.keras.layers.Activation('sigmoid')(merge)
+    unflatten = tf.keras.layers.Reshape((28,28))(outputs)
+    made = Model(inputs=inputs, outputs=unflatten)
+    made.summary()
+    made.compile(optimizer=tf.keras.optimizers.Adagrad(learning_rate, epsilon),
+        loss='binary_crossentropy')
+
+    history = made.fit(x=x_train,y=x_train,batch_size=batch_size,epochs=num_epochs,verbose=1)
+    # Plot training & validation loss values
+    # plt.plot(history.history['loss'])
+    # plt.title('Model ' + str(i) +' loss')
+    # plt.ylabel('Loss')
+    # plt.xlabel('Epoch')
+    # plt.show()
+
+    fname_ = fname + str(i+1) + '.h5'
+    samples_fname_ = samples_fname + str(i+1) + '.png'
+    autoencode_fname_ = autoencode_fname + str(i+1) + '.png'
+    auto_encode(made, 64, autoencode_fname_)
+    generate_samples(made, 16, samples_fname_)
+    made.save(fname_)
