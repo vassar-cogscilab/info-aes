@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "/Users/Emma/miniconda3/bin/python",
+    "python.pythonPath": "/Users/Emma/miniconda3/envs/machinelearning/bin/python",
     "python.linting.pylintEnabled": false,
     "python.linting.pep8Enabled": true,
     "python.linting.enabled": true

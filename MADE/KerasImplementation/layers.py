@@ -17,22 +17,21 @@ import numpy as np
 # implements a masked version of the keras Dense layer to be used as a hidden
 #   or an output layer in MADE
 class MaskedDense(Layer):
-    # these are parameters that can be passed in to the creation of a new instance, with their default values
+    # these are parameters that can be passed in to the creation of a new 
+    #   instance, with their default values
     def __init__(self, units,
                  mask,
                  activation=None,
                  **kwargs):
         if 'input_shape' not in kwargs and 'input_dim' in kwargs:
             kwargs['input_shape'] = (kwargs.pop('input_dim'),)
-
-        super(MaskedDense, self).__init__(**kwargs)
-        # each instance of the class will have all of these attributes
         
-        # self.first_layer = first_layer
+        # each instance of the class will have all of these attributes
         self.mask = mask
         self.activation = activations.get(activation)
         self.units = units
         self.input_spec = InputSpec(min_ndim=2)
+        super(MaskedDense, self).__init__(**kwargs)
 
     def build(self, input_shape, ):
         assert len(input_shape) >= 2
