@@ -28,10 +28,14 @@ epsilon = 0.000001  # training parameter
 hidden_layers = 2
 hidden_units = 2000
 features = 784
-first_training = False
+num_masks = 10
+first_training = False  # set to True to train a new model
+per_batch_training = False  # set to True to use train_on_batch
+if num_masks > 1:
+    per_batch_training = True
 
 if first_training:
-    masks = generators.gen_masks(features, hidden_layers, hidden_units)
+    masks = generators.gen_masks(num_masks, features, hidden_layers, hidden_units)
 
 else:
     with open('masks_2000_made.txt', 'rb') as file:
@@ -60,13 +64,62 @@ if first_training == False:
     weights = np.load('weights_2000_made.npz', allow_pickle=True)['arr_0']
     made.set_weights(weights)
 
-history = made.fit(x=x_train, y=x_train, batch_size=batch_size,
-                   epochs=num_epochs, verbose=1)
-plt.plot(history.history['loss'])
-plt.title('Loss')
-plt.ylabel('Loss')
-plt.xlabel('Epoch')
-plt.show()
+if per_batch_training:
+    # train with mini-batch mask randomization
+    history = []
+    for i in range(num_epochs):
+        # prepare batched data to feed to network
+        data = []
+        while len(data) < batches_per_epoch:
+            print('Batching data for epoch ' + str(i)+ 'of ' + str(num_epochs) + '.')
+            np.random.shuffle(x_train)
+            if len(data) * batch_size + batch_size > x_train.shape[0]:
+                batch = x_train[len(data) * batch_size:]
+            else:
+                batch = x_train[len(data) * batch_size:(len(data) * batch_size) +
+                        batch_size]
+            data.append(batch)
+        print('Epoch ' + str(i) + ' of ' + str(num_epochs) + '.')
+        for j in range(batches_per_epoch):
+            if j % 100 == 0:
+                print('Batch ' + str(j) + ' of ' + str(batches_per_epoch) + '.')
+            batches_completed = (batches_per_epoch * i) + j
+            next_mask_set = batches_completed % len(masks) + 1
+            # train on one batch and add the loss to the history
+            history.append(made.train_on_batch(x=data[j], y=data[j]))
+            # take weights from MADE
+            weights = made.get_weights()
+            tf.keras.backend.clear_session()
+            # remake network with next mask set
+            inputs = tf.keras.Input(shape=(28, 28))
+            flatten = tf.keras.layers.Flatten()(inputs)
+            h_1 = MaskedDense(hidden_units, masks[next_mask_set][0], 'relu')(flatten)
+            h_2 = MaskedDense(hidden_units, masks[next_mask_set][1], 'relu')(h_1)
+            h_out = MaskedDense(784, masks[next_mask_set][2])(h_2)
+            direct_out = MaskedDense(784, masks[next_mask_set][3])(flatten)
+            merge = tf.keras.layers.Add()([h_out, direct_out])
+            outputs = tf.keras.layers.Activation('sigmoid')(merge)
+            unflatten = tf.keras.layers.Reshape((28, 28))(outputs)
+            made = Model(inputs=inputs, outputs=unflatten)
+            # restore previous training
+            made.set_weights(weights)
+            made.compile(optimizer=tf.keras.optimizers.Adagrad(learning_rate, epsilon),
+                        loss='binary_crossentropy')
+    # Plot training loss values
+    plt.plot(history)
+    plt.title('Model ' + str(i) + ' loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Batch')
+    plt.show()
+
+else:
+    history = made.fit(x=x_train, y=x_train, batch_size=batch_size,
+                    epochs=num_epochs, verbose=1)
+    plt.plot(history.history['loss'])
+    plt.title('Loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.show()
 
 # save trained network
 with open('masks_2000_made_6_14.txt', 'wb') as file:
