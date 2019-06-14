@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
+
 # generate an array of mask matrices
 def gen_masks(features, hidden_layers, hidden_units, classes=None):
 
@@ -56,15 +57,16 @@ def gen_masks(features, hidden_layers, hidden_units, classes=None):
     masks.append(direct_mask)
     return masks
 
+
 # visualize auto-encoding and generative capacities
-def auto_encode(model, num_samples, fname=None):
+def auto_encode(model, num_samples, data, fname=None):
 
     # visualize inputs
     original_images = plt.figure(figsize=(5, 5), facecolor='#ffffff')
     # visualize auto-encodings
     output_images = plt.figure(figsize=(5, 5), facecolor='#ffffff')
     for i in range(num_samples):
-        proto_input = x_test[np.random.randint(0, x_test.shape[0]+1)]
+        proto_input = data[np.random.randint(0, data.shape[0]+1)]
         subplot = original_images.add_subplot(math.sqrt(num_samples),
                                               math.sqrt(num_samples), i+1)
         subplot.imshow(proto_input, cmap='gray')
@@ -81,6 +83,7 @@ def auto_encode(model, num_samples, fname=None):
     if fname is not None:
         plt.savefig(fname)
 
+
 def generate_samples(model, num_samples, fname=None):
 
     noise_parameter = np.random.rand()
@@ -90,7 +93,7 @@ def generate_samples(model, num_samples, fname=None):
         noise = np.random.binomial(1, noise_parameter, size=(1, 28, 28))
         output = np.zeros(noise[0].shape, dtype=np.float32)
         row_length = noise.shape[1]
-        for j in range(1, len(noise.flatten())): 
+        for j in range(1, len(noise.flatten())):
             noise = model.predict(noise, batch_size=1)
             p = noise[0][j // row_length][j % row_length]
             sample = np.random.binomial(1, p)
@@ -104,6 +107,7 @@ def generate_samples(model, num_samples, fname=None):
     if fname is not None:
         plt.savefig(fname)
 
+
 def info_reorder(model, images, fname=None):
 
     rows = 1
@@ -113,7 +117,7 @@ def info_reorder(model, images, fname=None):
         cols = 10
     images_info = []
     result = plt.figure(figsize=(cols + 0.5, rows + (rows * 0.5)), facecolor='#000000')
-    plt.title('Images by Decreasing Information Content', 
+    plt.title('Images by Decreasing Information Content',
               {'fontsize': 16, 'color': '#ffffff'})
     plt.axis('off')
     for i in images:
@@ -121,14 +125,14 @@ def info_reorder(model, images, fname=None):
         input[0] = i
         info = model.evaluate(x=input, y=input, batch_size=1, verbose=0)
         images_info.append(info)
-    for i in range(len(images_info)): 
+    for i in range(len(images_info)):
         max_info = max(images_info)
         max_info_image = images[images_info.index(max_info)]
         image_plot = result.add_subplot(rows, cols, i + 1)
         image_plot.imshow(max_info_image, cmap='gray', )
         plt.axis('off')
         image_plot.set_title(str(round(max_info, 4)),
-                             {'fontsize': 10}, color = '#ffffff')
+                             {'fontsize': 10}, color='#ffffff')
         images_info[images_info.index(max_info)] = -1
     plt.tight_layout()
     if fname is not None:
