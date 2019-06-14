@@ -16,21 +16,21 @@ import generators
 # Load MNIST
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
 
+
 # Binarize MNIST
 x_test = np.digitize(x_test, [0, 32]) - 1
 x_train = np.digitize(x_train, [0, 32]) - 1
 
 # Hyperparameters
-batch_size = 100
+batch_size = 500
 num_epochs = 1
 learning_rate = 0.001  # training parameter
 epsilon = 0.000001  # training parameter
 hidden_layers = 2
-hidden_units = 2000
+hidden_units = 1000
 features = 784
 num_masks = 10
-first_training = False  # set to True to train a new model
-per_batch_training = False  # set to True to use train_on_batch
+first_training = True  # set to True to train a new model
 if num_masks > 1:
     per_batch_training = True
     batches_per_epoch = math.ceil(x_train.shape[0] / batch_size)
@@ -43,7 +43,7 @@ if first_training:
                                  hidden_units)
 
 else:
-    with open('masks_2000_made.txt', 'rb') as file:
+    with open('', 'rb') as file:
         masks = pkl.load(file)
 
 # make network
@@ -66,34 +66,28 @@ if first_training is False:
     made.train_on_batch(x=x_train[0:batch_size], y=x_train[0:batch_size])
 
     # load network weights from test file
-    weights = np.load('weights_2000_made.npz', allow_pickle=True)['arr_0']
+    weights = np.load('', allow_pickle=True)['arr_0']
     made.set_weights(weights)
 
 if per_batch_training:
     # train with mini-batch mask randomization
     history = []
     for i in range(num_epochs):
-        # prepare batched data to feed to network
-        data = []
-        while len(data) < batches_per_epoch:
-            print('Batching data for epoch ' + str(i) + 'of ' +
-                  str(num_epochs) + '.')
-            np.random.shuffle(x_train)
-            if len(data) * batch_size + batch_size > x_train.shape[0]:
-                batch = x_train[len(data) * batch_size:]
-            else:
-                batch = x_train[len(data) * batch_size:(len(data) *
-                                batch_size) + batch_size]
-            data.append(batch)
+        # shuffle data
+        np.random.shuffle(x_train)
         print('Epoch ' + str(i) + ' of ' + str(num_epochs) + '.')
         for j in range(batches_per_epoch):
-            if j % 100 == 0:
+            if j % 10 == 0:
                 print('Batch ' + str(j) + ' of ' + str(batches_per_epoch) +
                       '.')
+            if j * batch_size + batch_size < x_train.shape[0]:
+                batch = x_train[(j * batch_size - 1):(j * batch_size - 1 + batch_size)]
+            else: 
+                batch = x_train[(j * batch_size - 1):]
             batches_completed = (batches_per_epoch * i) + j
-            next_mask_set = batches_completed % len(masks) + 1
+            next_mask_set = batches_completed % len(masks)
             # train on one batch and add the loss to the history
-            history.append(made.train_on_batch(x=data[j], y=data[j]))
+            history.append(made.train_on_batch(x=batch, y=batch))
             # take weights from MADE
             weights = made.get_weights()
             tf.keras.backend.clear_session()
@@ -129,10 +123,10 @@ else:
     plt.show()
 
 # save trained network
-with open('masks_2000_made_6_14.txt', 'wb') as file:
+with open('mbmr_masks.txt', 'wb') as file:
     pkl.dump(masks, file)
 
 made_2000_weights = made.get_weights()
-np.savez('weights_2000_made_6_14', made_2000_weights)
+np.savez('mbmr_weights', made_2000_weights)
 
-generators.generate_samples(made, 25, 'samples_2000_6_14')
+generators.generate_samples(made, 25, 'mbmr_samples')
