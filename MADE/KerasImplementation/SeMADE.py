@@ -4,11 +4,17 @@ import tensorflow as tf
 from tensorflow.keras import backend as K
 from tensorflow.keras import layers
 from tensorflow.keras import Model
-from layers import MaskedDense
 import numpy as np
 import matplotlib.pyplot as plt
 import math
 import pickle as pkl
+import os
+
+cwd = os.getcwd()
+cwd = cwd + '/MADE/KerasImplementation'
+os.chdir(cwd)
+
+from layers import MaskedDense
 import generators
 
 # For now, we'll use MNIST as our dataset
@@ -31,16 +37,19 @@ epsilon = 0.000001  # training parameter
 hidden_layers = 2
 hidden_units = 2000
 features = 784
+num_masks = 1
 classes = 10
 
+masks = generators.gen_masks(num_masks, features, hidden_layers, hidden_units, 10)
+
 image_inputs = tf.keras.Input(shape=(28, 28))
-class_inputs = tf.keras.Input(shape=(10))
+class_inputs = tf.keras.Input(shape=(10,))
 flatten = layers.Flatten()(image_inputs)
 inputs = layers.Concatenate(axis=1)([class_inputs, flatten])
-h_1 = MaskedDense(hidden_units, masks[0], 'relu')(inputs)
-h_2 = MaskedDense(hidden_units, masks[1], 'relu')(h_1)
-h_out = MaskedDense(features, masks[2])(h_2)
-direct_out = MaskedDense(features, masks[3])(inputs)
+h_1 = MaskedDense(hidden_units, masks[0][0], 'relu')(inputs)
+h_2 = MaskedDense(hidden_units, masks[0][1], 'relu')(h_1)
+h_out = MaskedDense(features, masks[0][2])(h_2)
+direct_out = MaskedDense(features, masks[0][3])(inputs)
 merge = tf.keras.layers.Add()([h_out, direct_out])
 unflatten = tf.keras.layers.Reshape((28, 28))(outputs)
 SeMADE = Model(inputs=inputs, outputs=unflatten)
