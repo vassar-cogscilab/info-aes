@@ -1,0 +1,133 @@
+<! DOCTYPE HTML>
+<html>
+    <head>
+        <title>Aesthetic Preference for MNIST Digits</title>
+        <script src="jspsych-6.0.5/jspsych.js"></script>
+        <script src="jspsych-6.0.5/plugins/jspsych-html-button-response.js"></script>
+        <link href="style.css" rel="stylesheet" type="text/css"></link>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body></body>
+<script>
+    // Generate ten unique pairwise comparisons for ten items
+    var i; 
+    const zeros = [];
+    for (i = 0; i < 10; i++) {
+        const fname = './stimuli/zeros/zero_';
+        zeros.push(fname + (i + 1) + '.png');
+    }
+    /*
+    const ones = [];
+    const twos = [];
+    const threes = [];
+    const fours = []; 
+    const fives = [];
+    const sixes = [];
+    const sevens = []; 
+    const eights = []; 
+    const nines = []; 
+    */
+    // To generate an array containing five comparisons, shuffle a stimulus and divide it every two items
+    function chunk(array) {
+        i = 0;
+        var chunks = [];
+        for (i = 0 ; i < array.length; i += 2) {
+            const chunk = {
+                left_image: array[i],
+                right_image: array[i + 1],
+                data: {
+                    left_image: array[i].slice(10),
+                    right_image: array[i + 1].slice(10),
+                    type: 'test'
+                }
+            };
+            chunks.push(chunk);
+        };
+        return chunks;
+    };
+
+    function generateComparisons(stimuli) {
+        var comparisons = [];
+        comparisons = comparisons.concat(chunk(jsPsych.randomization.shuffle(stimuli)));
+        comparisons = comparisons.concat(chunk(jsPsych.randomization.shuffle(stimuli)));
+        return comparisons;
+    };
+
+    // Generate a list of timeline variables to cover all of the trials
+    const digits = [zeros/*, ones, twos, threes, fours, fives, sixes, sevens, eights, nines*/];
+    var x;
+    var timeline_variables = [];
+    for (x of digits) {
+        timeline_variables = timeline_variables.concat(generateComparisons(x));
+    };
+    timeline_variables = jsPsych.randomization.shuffle(timeline_variables);
+
+    var timeline = [];
+
+    var welcome = {
+        type: "html-button-response",
+        stimulus: "<h1>Hello</h1>" + 
+                "<p>Welcome to our survey of beauty in handwritten digits!</p> " + 
+                "<p>Press the <q> next </q> button to read the survey instructions.</p>",
+        choices: ["next"],
+        data: {
+            left_image: ' ',
+            right_image: ' ',
+            type: 'welcome'
+        }
+    };
+
+    var instructions = {
+        type: "html-button-response",
+        stimulus: "<h1>Instructions</h1>" + 
+                "<div style='width:65%; line-height: 1.2em; text-align: justify; margin: auto;'>" +
+                "<p>Once you begin the survey, you will see a series of pairs of pictures " + 
+                "of handwritten numbers.</p><p>Please click (if you're on a computer) or " + 
+                "tap (if your device has a touchscreen) on the image that " + 
+                "looks more beautiful to you.</p><p> Click <q> next </q> to see the first " + 
+                "pair. </p></div>",
+        choices: ["next"],
+        data: {
+            left_image: ' ',
+            right_image: ' ',
+            type: 'instructions'
+        }
+    };
+
+    var pwc = {
+        type: "html-button-response",
+        stimulus: "",
+        choices: [jsPsych.timelineVariable('left_image'), jsPsych.timelineVariable('right_image')],
+        button_html: ["<img class=left-img src=%choice%>", "<img class=right-img src=%choice%>"],
+        data: jsPsych.timelineVariable('data')
+    };
+
+    var trials = {
+        timeline: [pwc],
+        timeline_variables: timeline_variables
+    };
+
+    var thanks = {
+        type: "html-button-response", 
+        stimulus: "<h1>All done!</h1> <p> Thank you for completing the survey!</p>",
+        choices: ["exit"],
+        data: {
+            left_image: ' ',
+            right_image: ' ',
+            type: 'conclusion'
+        }
+    };
+
+    const portions = [welcome, instructions, trials, thanks]
+    for (x of portions) {
+        timeline.push(x);
+    };
+
+    jsPsych.init({
+        timeline: timeline,
+        on_finish: function() {
+            jsPsych.data.displayData();
+        }
+    });
+</script>
+</html>

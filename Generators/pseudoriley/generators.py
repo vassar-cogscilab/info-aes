@@ -160,4 +160,5 @@ def gen_images(side, framework, number, remove_range, filename):
         if framework == 'zig_zag': 
             zig_zag(side, remove_values[i], fname)
 
-gen_images(500, 'zig_zag', 10, (.1, .7), 'test')
+gen_images(500, 'zig_zag', 10, (.1, .7), 'zero')
+pygame.quit()
