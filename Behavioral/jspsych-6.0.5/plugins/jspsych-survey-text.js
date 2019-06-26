@@ -97,14 +97,15 @@ jsPsych.plugins['survey-text'] = (function() {
     html += '<form id="jspsych-survey-text-form">'
     // add questions
     for (var i = 0; i < trial.questions.length; i++) {
-      html += '<div id="jspsych-survey-text-'+i+'" class="jspsych-survey-text-question" style="margin: 2em 0em;">';
+      html += '<div id="jspsych-survey-text-'+i+'" class="jspsych-survey-text-question">';
       html += '<p class="jspsych-survey-text">' + trial.questions[i].prompt + '</p>';
       var autofocus = i == 0 ? "autofocus" : "";
       var req = trial.questions[i].required ? "required" : "";
       if(trial.questions[i].rows == 1){
         html += '<input id="input-'+i+'" type="text" name="#jspsych-survey-text-response-' + i + '" size="'+trial.questions[i].columns+'" value="'+trial.questions[i].value+'" '+autofocus+' '+req+'></input>';
       } else {
-        html += '<textarea id="input-'+i+'" name="#jspsych-survey-text-response-' + i + '" cols="' + trial.questions[i].columns + '" rows="' + trial.questions[i].rows + '" '+autofocus+' '+req+'>'+trial.questions[i].value+'</textarea>';
+        html += '<textarea id="input-'+i+'" name="#jspsych-survey-text-response-' + i + '" cols="' + trial.questions[i].columns + '" rows="' + trial.questions[i].rows + '" ' +
+                'style=width:65% ' +  autofocus+' '+req+'>'+trial.questions[i].value+'</textarea>';
       }
       html += '</div>';
     }

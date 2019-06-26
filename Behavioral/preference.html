@@ -4,6 +4,8 @@
         <title>Aesthetic Preference for MNIST Digits</title>
         <script src="jspsych-6.0.5/jspsych.js"></script>
         <script src="jspsych-6.0.5/plugins/jspsych-html-button-response.js"></script>
+        <script src="jspsych-6.0.5/plugins/jspsych-survey-text.js"></script>
+        <script src="jspsych-6.0.5/plugins/jspsych-instructions.js"></script>
         <link href="style.css" rel="stylesheet" type="text/css"></link>
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
@@ -12,11 +14,6 @@
     // Generate ten unique pairwise comparisons for ten items
     var i; 
     const zeros = [];
-    for (i = 0; i < 10; i++) {
-        const fname = './stimuli/zeros/zero_';
-        zeros.push(fname + (i + 1) + '.png');
-    }
-    /*
     const ones = [];
     const twos = [];
     const threes = [];
@@ -26,7 +23,29 @@
     const sevens = []; 
     const eights = []; 
     const nines = []; 
-    */
+    for (i = 0; i < 10; i++) {
+        var fname = './stimuli/zero_';
+        zeros.push(fname + (i + 1) + '.png');
+        fname = './stimuli/one_';
+        ones.push(fname + (i + 1) + '.png');
+        fname = './stimuli/two_';
+        twos.push(fname + (i + 1) + '.png');
+        fname = './stimuli/three_';
+        threes.push(fname + (i + 1) + '.png');
+        fname = './stimuli/four_';
+        fours.push(fname + (i + 1) + '.png');
+        fname = './stimuli/five_';
+        fives.push(fname + (i + 1) + '.png');
+        fname = './stimuli/six_';
+        sixes.push(fname + (i + 1) + '.png');
+        fname = './stimuli/seven_';
+        sevens.push(fname + (i + 1) + '.png');
+        fname = './stimuli/eight_';
+        eights.push(fname + (i + 1) + '.png');
+        fname = './stimuli/nine_';
+        nines.push(fname + (i + 1) + '.png');
+    };
+
     // To generate an array containing five comparisons, shuffle a stimulus and divide it every two items
     function chunk(array) {
         i = 0;
@@ -54,7 +73,7 @@
     };
 
     // Generate a list of timeline variables to cover all of the trials
-    const digits = [zeros/*, ones, twos, threes, fours, fives, sixes, sevens, eights, nines*/];
+    const digits = [zeros, ones, twos, threes, fours, fives, sixes, sevens, eights, nines];
     var x;
     var timeline_variables = [];
     for (x of digits) {
@@ -63,6 +82,13 @@
     timeline_variables = jsPsych.randomization.shuffle(timeline_variables);
 
     var timeline = [];
+    var progress = 1;
+    function updateProgress() {
+        bar_value = progress / 104;
+        bar_value = bar_value.toPrecision(3);
+        jsPsych.setProgressBar(bar_value);
+        progress += 1;
+    }
 
     var welcome = {
         type: "html-button-response",
@@ -74,24 +100,48 @@
             left_image: ' ',
             right_image: ' ',
             type: 'welcome'
-        }
+        },
+        on_finish: updateProgress
     };
 
-    var instructions = {
-        type: "html-button-response",
-        stimulus: "<h1>Instructions</h1>" + 
-                "<div style='width:65%; line-height: 1.2em; text-align: justify; margin: auto;'>" +
+    // Define the instructions array
+    const instr = [
+                "<h1>Instructions</h1><div class=text-div>" +
                 "<p>Once you begin the survey, you will see a series of pairs of pictures " + 
-                "of handwritten numbers.</p><p>Please click (if you're on a computer) or " + 
-                "tap (if your device has a touchscreen) on the image that " + 
-                "looks more beautiful to you.</p><p> Click <q> next </q> to see the first " + 
-                "pair. </p></div>",
-        choices: ["next"],
+                "of handwritten numbers.</p><p>We'd like you to click (if you're on a computer) " + 
+                "or tap (if your device has a touchscreen) on the image that " + 
+                "looks more beautiful to you.</p></div>", 
+                "<h1>Instructions</h1><div class=text-div>" +
+                "<p>We're curious about how people are interpreting the " +
+                "instructions you just read. On the next screen, we're going to ask you to " + 
+                "share your understanding of the survey question. If you'd like, you can go " + 
+                "back and reread the instruction page. Otherwise, feel free to click <q>" + 
+                "next</q> whenever you're ready.</p></div>"
+    ];
+
+    var instructions = {
+        type: "instructions",
+        pages: instr,
+        allow_keys: false, 
+        show_clickable_nav: true,
+        button_label_previous: "back",
+        button_label_next: "next",
         data: {
             left_image: ' ',
             right_image: ' ',
             type: 'instructions'
-        }
+        },
+        on_finish: updateProgress
+    };
+
+    var check = {
+        type: "survey-text",
+        questions: [{prompt: "In your own words, how do you think we want you to choose between " + 
+                "the images in each pair? When you're happy with your reponse, click " + 
+                "'continue' to see the first pair of images.", rows: 3, columns: 40}],
+        preamble: "<h1>Interpretation</h1>",
+        button_label: "continue",
+        on_finish: updateProgress
     };
 
     var pwc = {
@@ -99,7 +149,8 @@
         stimulus: "",
         choices: [jsPsych.timelineVariable('left_image'), jsPsych.timelineVariable('right_image')],
         button_html: ["<img class=left-img src=%choice%>", "<img class=right-img src=%choice%>"],
-        data: jsPsych.timelineVariable('data')
+        data: jsPsych.timelineVariable('data'),
+        on_finish: updateProgress
     };
 
     var trials = {
@@ -115,16 +166,19 @@
             left_image: ' ',
             right_image: ' ',
             type: 'conclusion'
-        }
+        },
+        on_finish: updateProgress
     };
 
-    const portions = [welcome, instructions, trials, thanks]
+    const portions = [welcome, instructions, check, trials, thanks]
     for (x of portions) {
         timeline.push(x);
     };
 
     jsPsych.init({
         timeline: timeline,
+        show_progress_bar: true, 
+        auto_update_progress_bar: false,
         on_finish: function() {
             jsPsych.data.displayData();
         }

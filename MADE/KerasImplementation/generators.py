@@ -33,8 +33,8 @@ def gen_masks(num_masks, features, hidden_layers, hidden_units, classes=None):
                 layer_indices.append(np.random.randint(min(input_indices), features - 1))
             mask = np.zeros((len(input_indices), len(layer_indices)), dtype=np.float32)
             # populate mask with appropriate values
-            for j in range(len(input_indices)): # iterate over every layer node
-                for k in range(len(layer_indices)): # iterate over every input node
+            for j in range(len(input_indices)):  # iterate over every layer node
+                for k in range(len(layer_indices)):  # iterate over every input node
                     if input_indices[j] <= layer_indices[k]:
                         mask[j][k] = 1
             mask = tf.convert_to_tensor(mask, dtype=tf.float32)
