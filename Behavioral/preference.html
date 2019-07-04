@@ -4,13 +4,25 @@
         <title>Aesthetic Preference for MNIST Digits</title>
         <script src="jspsych-6.0.5/jspsych.js"></script>
         <script src="jspsych-6.0.5/plugins/jspsych-html-button-response.js"></script>
+        <script src="jspsych-6.0.5/plugins/jspsych-html-keyboard-response.js"></script>
         <script src="jspsych-6.0.5/plugins/jspsych-survey-text.js"></script>
         <script src="jspsych-6.0.5/plugins/jspsych-instructions.js"></script>
+        <script src="js/serverComm.js"></script>
         <link href="style.css" rel="stylesheet" type="text/css"></link>
         <meta name="viewport" content="width=device-width, initial-scale=1">
     </head>
     <body></body>
 <script>
+    // Get subject ID from Prolific
+    subject_id = jsPsych.data.getURLVariable('PROLIFIC_PID');
+    // Handle null subject IDs
+    if (subject_id == null) {
+        subject_id = jsPsych.randomization.randomID(20);
+    }
+    jsPsych.data.addProperties({
+    subject_id: subject_id,
+    task: 'preference'
+    });
     // Generate ten unique pairwise comparisons for ten items
     var i; 
     const zeros = [];
@@ -159,13 +171,18 @@
     };
 
     var thanks = {
-        type: "html-button-response", 
-        stimulus: "<h1>All done!</h1> <p> Thank you for completing the survey!</p>",
-        choices: ["exit"],
+        type: "html-keyboard-response", 
+        stimulus: "<h1>All done!</h1> <p> Thank you for completing the survey!</p>" + 
+                  "<p>Click <a href='https://app.prolific.ac/submissions/complete?cc=JXLJ72BS'>here</a> to " +
+                  "register study completion on Prolific.</p>",
+        choices: jsPsych.NO_KEYS,
         data: {
             left_image: ' ',
             right_image: ' ',
             type: 'conclusion'
+        },
+        on_start: function() {
+            serverComm.save_data(jsPsych.data.get().values());
         },
         on_finish: updateProgress
     };
@@ -179,9 +196,7 @@
         timeline: timeline,
         show_progress_bar: true, 
         auto_update_progress_bar: false,
-        on_finish: function() {
-            jsPsych.data.displayData();
-        }
+        preload_images: [zeros, ones, twos, threes, fours, fives, sixes, sevens, eights, nines]
     });
 </script>
 </html>

@@ -149,6 +149,7 @@ textarea {
   transition: border 1s;
 }
 
+/*
 .left-img:hover {
   border: 1vw solid rgb(11, 18, 69);
 }
@@ -156,6 +157,7 @@ textarea {
 .right-img:hover {
   border: 1vw solid rgb(11, 18, 69);
 }
+*/
 
 .img-button {
   position: absolute;

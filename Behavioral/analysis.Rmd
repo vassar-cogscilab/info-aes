@@ -1,0 +1,63 @@
+---
+title: "ELOChoice MNIST Rankings"
+output: html_notebook
+---
+
+```{r}
+# Load data
+library("tidyverse")
+library("EloChoice")
+library("purrr")
+library("ggplot2")
+setwd('/Users/Emma/Documents/GitHub/info-aes/Behavioral/data')
+atypicality_data <- read_csv('typicality_data.csv')
+```
+
+```{r}
+# Tidy data
+atypicality_data <- atypicality_data %>% filter(left_image!="NULL") %>% mutate(winner=if_else(button_pressed==0, left_image, right_image, missing = NULL)) %>% mutate(loser=if_else(button_pressed==0, right_image, left_image, missing = NULL))
+
+# Tag comparison by digit
+atypicality_data <- atypicality_data %>% mutate(digit = str_match(left_image, "[a-z]*(?=_)"))
+
+ELO_data <- atypicality_data %>% select(subject_id, winner, loser, digit)
+
+# Split data by digit
+```
+
+```{r}
+# Assess quality of data
+by_subj <- atypicality_data %>% filter(!is.null(button_pressed)) %>% group_by(subject_id) %>% summarize(sd = sd(button_pressed))
+ggplot(data=by_subj, aes(x=subject_id,  y=sd)) + geom_bar(stat="identity")
+```
+
+```{r}
+# Compute ratings
+rated <- elochoice(winner=ELO_data$winner, loser=ELO_data$loser, runs=500)
+ratings(rated, show="mean", drawplot=TRUE)
+
+# Compute rating stability metric
+upsets <- reliability(rated)
+mean(upsets$upset.wgt)
+
+# Save ratings to file
+for_save <- ratings(rated, show="mean", drawplot=FALSE)
+xdata <- write.table(for_save, "typicality_ratings.txt", sep="/t")
+```
+```{r}
+# Compute ratings with only the first fifty participants
+rated_half <- elochoice(winner=ELO_data_half$winner, loser=ELO_data_half$loser, runs=500)
+ratings(rated_half, show="mean", drawplot=TRUE)
+upsets_half <- reliability(rated_half)
+mean(upsets_half$upset.wgt)
+```
+
+```{r}
+# Compute ratings for fours
+elo_fours <- filter(ELO_data, digit=="four")
+rated_fours <- elochoice(winner=elo_fours$winner, loser=elo_fours$loser, runs=500)
+ratings(rated_fours, show="mean", drawplot=TRUE)
+upsets_fours <- reliability(rated_fours)
+mean(upsets_fours$upset.wgt)
+```
+
