@@ -10,54 +10,124 @@ library("EloChoice")
 library("purrr")
 library("ggplot2")
 setwd('/Users/Emma/Documents/GitHub/info-aes/Behavioral/data')
-atypicality_data <- read_csv('typicality_data.csv')
+data <- read_csv('all_data.csv')
+good_subjects <- read_csv('instructionsComprehension.csv')
+good_subjects <- good_subjects %>% filter(trial_index == 2) %>% select(subject_id, task)
+```
+```{r}
+# This chunk will throw an error, but the required function will be usable afterwards
+library("qdap")
 ```
 
 ```{r}
 # Tidy data
-atypicality_data <- atypicality_data %>% filter(left_image!="NULL") %>% mutate(winner=if_else(button_pressed==0, left_image, right_image, missing = NULL)) %>% mutate(loser=if_else(button_pressed==0, right_image, left_image, missing = NULL))
+data <- data %>% filter(left_image!="NULL") %>% mutate(winner=if_else(button_pressed==0, left_image, right_image, missing = NULL)) %>% mutate(loser=if_else(button_pressed==0, right_image, left_image, missing = NULL))
 
 # Tag comparison by digit
-atypicality_data <- atypicality_data %>% mutate(digit = str_match(left_image, "[a-z]*(?=_)"))
+data <- data %>% mutate(digit = str_match(left_image, "[a-z]*(?=_)"))
 
-ELO_data <- atypicality_data %>% select(subject_id, winner, loser, digit)
+# Simplify data frame
+ELO_data <- data %>% select(subject_id, winner, loser, digit, task, button_pressed)
 
-# Split data by digit
+# Separate data by task
+typicality <- ELO_data %>% select(-task)
+more_good_subjects <- typicality %>% filter(!is.null(button_pressed)) %>% 
+  group_by(subject_id) %>% summarize(sd = sd(button_pressed)) %>% filter(sd > 0.4)
+typicality <- typicality %>% filter(subject_id %in% more_good_subjects$subject_id) %>% filter(subject_id %in% good_subjects$subject_id)
+preference <- ELO_data %>% filter(task=="preference") %>% select(-task)
+comment(typicality) <- "Typicality"
+comment(preference) <- "Preference"
 ```
 
 ```{r}
-# Assess quality of data
-by_subj <- atypicality_data %>% filter(!is.null(button_pressed)) %>% group_by(subject_id) %>% summarize(sd = sd(button_pressed))
-ggplot(data=by_subj, aes(x=subject_id,  y=sd)) + geom_bar(stat="identity")
+quality_plot <- function(data) {
+  name <- comment(data)
+  by_subj <- data %>% filter(!is.null(button_pressed)) %>% group_by(subject_id) %>% summarize(sd = sd(button_pressed))
+ggplot(by_subj, aes(x=subject_id,  y=sd)) + geom_bar(stat="identity") + 
+  labs(title=sprintf("Variation in Responses to %s Task", name), 
+       x="Subjects", 
+       y="Standard Deviation of Response") +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank())
+}
+
+quality_plot(preference)
+quality_plot(typicality)
 ```
 
 ```{r}
-# Compute ratings
-rated <- elochoice(winner=ELO_data$winner, loser=ELO_data$loser, runs=500)
-ratings(rated, show="mean", drawplot=TRUE)
+by_digit <- function(data) {
+    by_digit <- data %>%
+    group_by(digit) %>%
+    nest()
+    return(by_digit)
+}
 
-# Compute rating stability metric
-upsets <- reliability(rated)
-mean(upsets$upset.wgt)
+rate <- function(data) {
+  rated <- elochoice(winner=data$winner, loser=data$loser, runs=500)
+  ratings <- ratings(rated, show="mean", drawplot=FALSE) %>% list2df(col1="ELO_Rating", col2="Image")
+  return(ratings)
+}
 
-# Save ratings to file
-for_save <- ratings(rated, show="mean", drawplot=FALSE)
-xdata <- write.table(for_save, "typicality_ratings.txt", sep="/t")
+# Nest ELO data by digit
+preference_digits <- by_digit(preference)
+typicality_digits <- by_digit(typicality)
+
+# Compute ratings within digit categories
+preference_ELO <- preference_digits %>% mutate(ELO = map(preference_digits$data, rate)) %>% select(-data)
+typicality_ELO <- typicality_digits %>% mutate(ELO = map(typicality_digits$data, rate)) %>% select(-data)
+
+# Un-nest ELO data
+preference_ELO <- unnest(preference_ELO, ELO)
+typicality_ELO <- unnest(typicality_ELO, ELO)
+
+# Create a data frame with the average participant rating for each image
+partic_ratings <- function(data) {
+  ratings <- data %>% count("winner") %>% 
+    mutate(Image = winner,
+           Rating = (freq / 200) * 100,
+           Digit = str_match(winner, "[a-z]*(?=_)")) %>%
+    select(-winner, -freq)
+  return(ratings)
+}
+
+preference_partic <- partic_ratings(preference)
+typicality_partic <- partic_ratings(typicality)
+
+# Merge all results
+preference_final <- merge(preference_ELO, preference_partic, by="Image") %>% select(-digit)
+typicality_final <- merge(typicality_ELO, typicality_partic, by="Image") %>% select(-digit)
+comment(typicality_final) <- "Typicality"
+comment(preference_final) <- "Preference"
+
+typicality_final <- typicality_final %>% 
+  mutate(Typicality = 100 * ((ELO_Rating - min(ELO_Rating)) / (max(ELO_Rating) - min(ELO_Rating)))) %>% 
+  select(-ELO_Rating, -Rating)
+preference_final <- preference_final %>% 
+  mutate(Beauty = 100 * ((ELO_Rating - min(ELO_Rating)) / (max(ELO_Rating) - min(ELO_Rating)))) %>% 
+  select(-ELO_Rating, -Rating, -Digit)
+
+final <- merge(typicality_final, preference_final, by="Image")
+```
+
+```{r}
+ggplot(final, aes(x=Typicality, y=Beauty)) + 
+  geom_point(stat="identity") + geom_smooth(method="lm", formula=y ~ poly(x, 2), se=FALSE) + 
+  labs(title=sprintf("Perceived Image Unusualness and Beauty of Handwritten Digits"),
+       x="Unusualness",
+       y="Beauty") + 
+  facet_wrap(~Digit, nrow=2, ncol=5) + theme_linedraw()
 ```
 ```{r}
-# Compute ratings with only the first fifty participants
-rated_half <- elochoice(winner=ELO_data_half$winner, loser=ELO_data_half$loser, runs=500)
-ratings(rated_half, show="mean", drawplot=TRUE)
-upsets_half <- reliability(rated_half)
-mean(upsets_half$upset.wgt)
-```
+model <- read.csv('evaluation.csv')
+validation <- merge(final, model, by="Image")
 
-```{r}
-# Compute ratings for fours
-elo_fours <- filter(ELO_data, digit=="four")
-rated_fours <- elochoice(winner=elo_fours$winner, loser=elo_fours$loser, runs=500)
-ratings(rated_fours, show="mean", drawplot=TRUE)
-upsets_fours <- reliability(rated_fours)
-mean(upsets_fours$upset.wgt)
+fours <- filter(validation, Digit=="four")
+ggplot(data=fours, aes(x=Info, y=Typicality)) + 
+  geom_point(stat="identity") + geom_smooth(method="lm", formula=y ~ poly(x, 2), se=FALSE) + 
+  labs(title=sprintf("Can a MADE Neural Network Predict Perceived Typicality of Handwritten Digits?"),
+       x="MADE Loss ('Information Content')",
+       y="Perceived Atypicality") + theme_linedraw()
 ```
 
